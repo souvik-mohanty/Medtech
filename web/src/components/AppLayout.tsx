@@ -6,6 +6,7 @@ const SHOP_NAV = [
   { to: '/shop', label: 'Dashboard', end: true },
   { to: '/shop/billing', label: 'Billing' },
   { to: '/shop/inventory', label: 'Inventory' },
+  { to: '/shop/lab-tests', label: 'Lab Tests' },
   { to: '/shop/branding', label: 'Branding' },
   { to: '/shop/payment-gateway', label: 'Payment Gateway' },
 ];

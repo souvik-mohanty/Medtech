@@ -11,7 +11,10 @@ export function InventoryPage() {
 
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
-  const [price, setPrice] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [mfgDate, setMfgDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
   const [stockQuantity, setStockQuantity] = useState('');
   const [gstPercentage, setGstPercentage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -34,7 +37,7 @@ export function InventoryPage() {
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !price || !stockQuantity) return;
+    if (!name.trim() || !sellingPrice || !stockQuantity) return;
 
     setIsSaving(true);
     setError(null);
@@ -42,13 +45,19 @@ export function InventoryPage() {
       await createProduct({
         name: name.trim(),
         unit: unit.trim() || undefined,
-        price: Number(price),
+        sellingPrice: Number(sellingPrice),
+        purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
+        mfgDate: mfgDate || undefined,
+        expiryDate: expiryDate || undefined,
         stockQuantity: Number(stockQuantity),
         gstPercentage: gstPercentage ? Number(gstPercentage) : undefined,
       });
       setName('');
       setUnit('');
-      setPrice('');
+      setSellingPrice('');
+      setPurchasePrice('');
+      setMfgDate('');
+      setExpiryDate('');
       setStockQuantity('');
       setGstPercentage('');
       await load();
@@ -58,6 +67,8 @@ export function InventoryPage() {
       setIsSaving(false);
     }
   }
+
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <AppLayout>
@@ -79,13 +90,25 @@ export function InventoryPage() {
         </div>
         <div style={styles.fieldRow}>
           <label style={styles.label}>
-            Price (₹)
+            Selling price (₹)
             <input
               type="number"
               min="0"
               step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              value={sellingPrice}
+              onChange={(e) => setSellingPrice(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
+            Purchase price (₹)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={purchasePrice}
+              onChange={(e) => setPurchasePrice(e.target.value)}
+              placeholder="optional"
               style={styles.input}
             />
           </label>
@@ -111,7 +134,28 @@ export function InventoryPage() {
             />
           </label>
         </div>
-        <button type="submit" disabled={isSaving || !name.trim() || !price || !stockQuantity}>
+        <div style={styles.fieldRow}>
+          <label style={styles.label}>
+            Mfg. date
+            <input
+              type="date"
+              value={mfgDate}
+              onChange={(e) => setMfgDate(e.target.value)}
+              max={today}
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
+            Expiry date
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+        </div>
+        <button type="submit" disabled={isSaving || !name.trim() || !sellingPrice || !stockQuantity}>
           {isSaving ? 'Adding…' : 'Add product'}
         </button>
       </form>
@@ -127,21 +171,32 @@ export function InventoryPage() {
             <tr>
               <th style={styles.th}>Name</th>
               <th style={styles.th}>Unit</th>
-              <th style={styles.th}>Price</th>
+              <th style={styles.th}>Selling Price</th>
+              <th style={styles.th}>Purchase Price</th>
               <th style={styles.th}>Stock</th>
               <th style={styles.th}>GST %</th>
+              <th style={styles.th}>Mfg. Date</th>
+              <th style={styles.th}>Expiry Date</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id}>
-                <td style={styles.td}>{p.name}</td>
-                <td style={styles.td}>{p.unit ?? '—'}</td>
-                <td style={styles.td}>₹{p.price.toFixed(2)}</td>
-                <td style={styles.td}>{p.stockQuantity}</td>
-                <td style={styles.td}>{p.gstPercentage.toFixed(2)}</td>
-              </tr>
-            ))}
+            {products.map((p) => {
+              const isExpired = !!p.expiryDate && p.expiryDate < today;
+              return (
+                <tr key={p.id}>
+                  <td style={styles.td}>{p.name}</td>
+                  <td style={styles.td}>{p.unit ?? '—'}</td>
+                  <td style={styles.td}>₹{p.sellingPrice.toFixed(2)}</td>
+                  <td style={styles.td}>{p.purchasePrice != null ? `₹${p.purchasePrice.toFixed(2)}` : '—'}</td>
+                  <td style={styles.td}>{p.stockQuantity}</td>
+                  <td style={styles.td}>{p.gstPercentage.toFixed(2)}</td>
+                  <td style={styles.td}>{p.mfgDate ?? '—'}</td>
+                  <td style={{ ...styles.td, color: isExpired ? '#c0392b' : undefined, fontWeight: isExpired ? 600 : undefined }}>
+                    {p.expiryDate ?? '—'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
@@ -154,19 +209,21 @@ const styles: Record<string, CSSProperties> = {
     border: '1px solid #e5e5e5',
     borderRadius: 8,
     padding: '1.5rem',
-    maxWidth: 640,
+    maxWidth: 720,
     marginBottom: '2rem',
   },
   fieldRow: {
     display: 'flex',
     gap: '1rem',
     marginBottom: '1rem',
+    flexWrap: 'wrap',
   },
   label: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.25rem',
     flex: 1,
+    minWidth: 140,
     fontSize: '0.9rem',
   },
   input: {
@@ -177,7 +234,7 @@ const styles: Record<string, CSSProperties> = {
   table: {
     borderCollapse: 'collapse',
     width: '100%',
-    maxWidth: 800,
+    maxWidth: 960,
   },
   th: {
     textAlign: 'left',

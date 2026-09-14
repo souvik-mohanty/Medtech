@@ -58,7 +58,7 @@ export function BrowsePage() {
     const lines: CartLine[] = Object.entries(cart)
       .map(([productId, quantity]) => {
         const product = products?.find((p) => p.id === productId);
-        return product ? { productId, productName: product.name, price: product.price, quantity } : null;
+        return product ? { productId, productName: product.name, price: product.sellingPrice, quantity } : null;
       })
       .filter((line): line is CartLine => line !== null);
 
@@ -108,7 +108,7 @@ export function BrowsePage() {
                 {products.map((p) => (
                   <tr key={p.id}>
                     <td style={styles.td}>{p.name}</td>
-                    <td style={styles.td}>₹{p.price.toFixed(2)}</td>
+                    <td style={styles.td}>₹{p.sellingPrice.toFixed(2)}</td>
                     <td style={styles.td}>{p.stockQuantity}</td>
                     <td style={styles.td}>
                       <input

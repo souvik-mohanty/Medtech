@@ -57,7 +57,10 @@ export interface Product {
   id: string;
   name: string;
   unit: string | null;
-  price: number;
+  sellingPrice: number;
+  purchasePrice: number | null;
+  mfgDate: string | null;
+  expiryDate: string | null;
   stockQuantity: number;
   gstPercentage: number;
 }
@@ -65,9 +68,48 @@ export interface Product {
 export interface ProductRequest {
   name: string;
   unit?: string;
-  price: number;
+  sellingPrice: number;
+  purchasePrice?: number;
+  mfgDate?: string;
+  expiryDate?: string;
   stockQuantity: number;
   gstPercentage?: number;
+}
+
+export interface InventoryInsights {
+  totalProducts: number;
+  totalStockUnits: number;
+  totalInventoryValue: number;
+  expiringSoonCount: number;
+  expiringSoon: Product[];
+  expiredCount: number;
+  expired: Product[];
+}
+
+export interface LabTest {
+  id: string;
+  name: string;
+  price: number;
+  active: boolean;
+}
+
+export interface LabTestRequest {
+  name: string;
+  price: number;
+}
+
+export interface LabTestCombo {
+  id: string;
+  name: string;
+  comboPrice: number;
+  active: boolean;
+  tests: LabTest[];
+}
+
+export interface LabTestComboRequest {
+  name: string;
+  comboPrice: number;
+  testIds: string[];
 }
 
 export interface BillItem {
@@ -142,6 +184,31 @@ export async function listProducts(): Promise<Product[]> {
 export async function createProduct(request: ProductRequest): Promise<Product> {
   const response = await apiClient.post('/api/franchise/inventory/products', request);
   return response.data.data as Product;
+}
+
+export async function getInventoryInsights(): Promise<InventoryInsights> {
+  const response = await apiClient.get('/api/franchise/inventory/insights');
+  return response.data.data as InventoryInsights;
+}
+
+export async function listLabTests(): Promise<LabTest[]> {
+  const response = await apiClient.get('/api/franchise/labtests');
+  return response.data.data as LabTest[];
+}
+
+export async function createLabTest(request: LabTestRequest): Promise<LabTest> {
+  const response = await apiClient.post('/api/franchise/labtests', request);
+  return response.data.data as LabTest;
+}
+
+export async function listLabTestCombos(): Promise<LabTestCombo[]> {
+  const response = await apiClient.get('/api/franchise/labtests/combos');
+  return response.data.data as LabTestCombo[];
+}
+
+export async function createLabTestCombo(request: LabTestComboRequest): Promise<LabTestCombo> {
+  const response = await apiClient.post('/api/franchise/labtests/combos', request);
+  return response.data.data as LabTestCombo;
 }
 
 export async function createCounterBill(request: CounterBillRequest): Promise<Bill> {

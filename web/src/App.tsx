@@ -7,6 +7,7 @@ import { OnboardingPage } from './pages/shop-owner/OnboardingPage';
 import { DashboardPage } from './pages/shop-owner/DashboardPage';
 import { BillingPage } from './pages/shop-owner/BillingPage';
 import { InventoryPage } from './pages/shop-owner/InventoryPage';
+import { LabTestsPage } from './pages/shop-owner/LabTestsPage';
 import { BrandingPage } from './pages/shop-owner/BrandingPage';
 import { PaymentGatewayPage } from './pages/shop-owner/PaymentGatewayPage';
 import { BrowsePage } from './pages/patient/BrowsePage';
@@ -63,6 +64,14 @@ export default function App() {
             element={
               <RoleRoute allow="FRANCHISE">
                 <InventoryPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/shop/lab-tests"
+            element={
+              <RoleRoute allow="FRANCHISE">
+                <LabTestsPage />
               </RoleRoute>
             }
           />

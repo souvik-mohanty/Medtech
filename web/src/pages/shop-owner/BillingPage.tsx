@@ -120,7 +120,7 @@ export function BillingPage() {
               {products.map((p) => (
                 <tr key={p.id}>
                   <td style={styles.td}>{p.name}</td>
-                  <td style={styles.td}>₹{p.price.toFixed(2)}</td>
+                  <td style={styles.td}>₹{p.sellingPrice.toFixed(2)}</td>
                   <td style={styles.td}>{p.stockQuantity}</td>
                   <td style={styles.td}>
                     <input
