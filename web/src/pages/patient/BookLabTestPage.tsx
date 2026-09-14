@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { errorMessage } from '../../api/client';
@@ -6,7 +6,20 @@ import { bookLabTest, browseFranchiseLabTestCombos, browseFranchiseLabTests } fr
 import type { LabPaymentMode, LabTest, LabTestBooking, LabTestCombo } from '../../api/franchiseApi';
 import { useActiveFranchise } from './useActiveFranchise';
 
-type Selected = { kind: 'test' | 'combo'; id: string; name: string; price: number } | null;
+interface CartItem {
+  kind: 'test' | 'combo';
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface BookingResult {
+  name: string;
+  booking?: LabTestBooking;
+  error?: string;
+}
+
+const MAX_SEARCH_RESULTS = 8;
 
 export function BookLabTestPage() {
   const { franchise, isLoading: isLoadingFranchise, error: franchiseError } = useActiveFranchise();
@@ -16,12 +29,13 @@ export function BookLabTestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selected, setSelected] = useState<Selected>(null);
+  const [search, setSearch] = useState('');
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [address, setAddress] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [paymentMode, setPaymentMode] = useState<LabPaymentMode>('CASH');
   const [isBooking, setIsBooking] = useState(false);
-  const [confirmed, setConfirmed] = useState<LabTestBooking | null>(null);
+  const [results, setResults] = useState<BookingResult[] | null>(null);
 
   useEffect(() => {
     if (!franchise) return;
@@ -36,40 +50,90 @@ export function BookLabTestPage() {
       .finally(() => setIsLoading(false));
   }, [franchise]);
 
+  const searchResults = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term || !tests || !combos) return [];
+    const inCart = (kind: CartItem['kind'], id: string) => cart.some((c) => c.kind === kind && c.id === id);
+
+    const testMatches: CartItem[] = tests
+      .filter((t) => t.name.toLowerCase().includes(term) && !inCart('test', t.id))
+      .map((t) => ({ kind: 'test' as const, id: t.id, name: t.name, price: t.price }));
+    const comboMatches: CartItem[] = combos
+      .filter((c) => c.name.toLowerCase().includes(term) && !inCart('combo', c.id))
+      .map((c) => ({ kind: 'combo' as const, id: c.id, name: c.name, price: c.comboPrice }));
+
+    return [...testMatches, ...comboMatches].slice(0, MAX_SEARCH_RESULTS);
+  }, [search, tests, combos, cart]);
+
+  function addToCart(item: CartItem) {
+    setCart((prev) => [...prev, item]);
+    setSearch('');
+  }
+
+  function removeFromCart(kind: CartItem['kind'], id: string) {
+    setCart((prev) => prev.filter((item) => !(item.kind === kind && item.id === id)));
+  }
+
   async function handleBook(e: FormEvent) {
     e.preventDefault();
-    if (!franchise || !selected || !address.trim() || !mobileNumber.trim()) return;
+    if (!franchise || cart.length === 0 || !address.trim() || !mobileNumber.trim()) return;
 
     setIsBooking(true);
     setError(null);
-    try {
-      const booking = await bookLabTest({
-        franchiseId: franchise.id,
-        labTestId: selected.kind === 'test' ? selected.id : undefined,
-        comboId: selected.kind === 'combo' ? selected.id : undefined,
-        address: address.trim(),
-        mobileNumber: mobileNumber.trim(),
-        paymentMode,
-      });
-      setConfirmed(booking);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setIsBooking(false);
+    const outcomes: BookingResult[] = [];
+    for (const item of cart) {
+      try {
+        const booking = await bookLabTest({
+          franchiseId: franchise.id,
+          labTestId: item.kind === 'test' ? item.id : undefined,
+          comboId: item.kind === 'combo' ? item.id : undefined,
+          address: address.trim(),
+          mobileNumber: mobileNumber.trim(),
+          paymentMode,
+        });
+        outcomes.push({ name: item.name, booking });
+      } catch (err) {
+        outcomes.push({ name: item.name, error: errorMessage(err) });
+      }
     }
+    setResults(outcomes);
+    setIsBooking(false);
   }
 
-  if (confirmed) {
+  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+
+  if (results) {
     return (
       <AppLayout>
-        <h2 style={{ marginTop: 0 }}>Booking confirmed</h2>
-        <p>
-          <strong>{confirmed.itemName}</strong> — ₹{confirmed.amount.toFixed(2)}
-        </p>
-        <p style={{ color: '#666' }}>
-          Status: <strong>{confirmed.status === 'PAID' ? 'Paid' : 'Payment pending'}</strong>
-          {confirmed.paymentMode === 'CASH' && ' — pay at the store when you visit.'}
-        </p>
+        <h2 style={{ marginTop: 0 }}>Booking results</h2>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Test / Combo</th>
+              <th style={styles.th}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map((r, i) => (
+              <tr key={i}>
+                <td style={styles.td}>{r.name}</td>
+                <td style={styles.td}>
+                  {r.booking ? (
+                    <span style={{ color: '#1F8A70' }}>
+                      Booked — ₹{r.booking.amount.toFixed(2)},{' '}
+                      {r.booking.status === 'PAID' ? 'paid' : 'payment pending'}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#c0392b' }}>Failed — {r.error}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {paymentMode === 'CASH' && results.some((r) => r.booking) && (
+          <p style={{ color: '#666', marginTop: '1rem' }}>Pay at the store when you visit.</p>
+        )}
       </AppLayout>
     );
   }
@@ -104,59 +168,77 @@ export function BookLabTestPage() {
 
       {error && <p style={{ color: '#c0392b' }}>{error}</p>}
 
-      {tests && combos && (
+      {tests && combos && tests.length === 0 && combos.length === 0 ? (
+        <p style={{ color: '#666' }}>This shop hasn't listed any lab tests yet.</p>
+      ) : (
         <>
-          <h3>Tests</h3>
-          {tests.length === 0 ? (
-            <p style={{ color: '#666' }}>No individual tests listed.</p>
-          ) : (
-            <ul style={styles.itemList}>
-              {tests.map((t) => (
-                <li key={t.id}>
-                  <label style={styles.itemLabel}>
-                    <input
-                      type="radio"
-                      name="selectedItem"
-                      checked={selected?.kind === 'test' && selected.id === t.id}
-                      onChange={() => setSelected({ kind: 'test', id: t.id, name: t.name, price: t.price })}
-                    />
-                    {t.name} — ₹{t.price.toFixed(2)}
-                  </label>
-                </li>
-              ))}
-            </ul>
+          <div style={styles.searchBox}>
+            <label style={styles.label}>
+              Search a test or combo
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Start typing…"
+                style={styles.input}
+              />
+            </label>
+            {searchResults.length > 0 && (
+              <ul style={styles.resultList}>
+                {searchResults.map((item) => (
+                  <li key={`${item.kind}-${item.id}`}>
+                    <button type="button" onClick={() => addToCart(item)} style={styles.resultButton}>
+                      <span>
+                        {item.name} {item.kind === 'combo' && <em>(combo)</em>}
+                      </span>
+                      <span style={{ color: '#666' }}>₹{item.price.toFixed(2)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {search.trim() && searchResults.length === 0 && (
+              <p style={{ color: '#666', fontSize: '0.85rem' }}>No matching tests or combos.</p>
+            )}
+          </div>
+
+          {cart.length > 0 && (
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Test / Combo</th>
+                  <th style={styles.th}>Price</th>
+                  <th style={styles.th}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={`${item.kind}-${item.id}`}>
+                    <td style={styles.td}>
+                      {item.name} {item.kind === 'combo' && <em style={{ color: '#666' }}>(combo)</em>}
+                    </td>
+                    <td style={styles.td}>₹{item.price.toFixed(2)}</td>
+                    <td style={styles.td}>
+                      <button type="button" onClick={() => removeFromCart(item.kind, item.id)}>
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={styles.td}>
+                    <strong>Total</strong>
+                  </td>
+                  <td style={styles.td} colSpan={2}>
+                    <strong>₹{cartTotal.toFixed(2)}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           )}
 
-          <h3>Combo packages</h3>
-          {combos.length === 0 ? (
-            <p style={{ color: '#666' }}>No combo packages listed.</p>
-          ) : (
-            <ul style={styles.itemList}>
-              {combos.map((c) => (
-                <li key={c.id}>
-                  <label style={styles.itemLabel}>
-                    <input
-                      type="radio"
-                      name="selectedItem"
-                      checked={selected?.kind === 'combo' && selected.id === c.id}
-                      onChange={() => setSelected({ kind: 'combo', id: c.id, name: c.name, price: c.comboPrice })}
-                    />
-                    {c.name} — ₹{c.comboPrice.toFixed(2)} ({c.tests.map((t) => t.name).join(', ')})
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {tests.length === 0 && combos.length === 0 && (
-            <p style={{ color: '#666' }}>This shop hasn't listed any lab tests yet.</p>
-          )}
-
-          {selected && (
+          {cart.length > 0 && (
             <form onSubmit={handleBook} style={styles.form}>
-              <h3 style={{ marginTop: 0 }}>
-                Book: {selected.name} — ₹{selected.price.toFixed(2)}
-              </h3>
+              <h3 style={{ marginTop: 0 }}>Booking details</h3>
               <label style={styles.label}>
                 Address (required)
                 <input value={address} onChange={(e) => setAddress(e.target.value)} style={styles.input} />
@@ -177,7 +259,7 @@ export function BookLabTestPage() {
                 </select>
               </label>
               <button type="submit" disabled={isBooking || !address.trim() || !mobileNumber.trim()}>
-                {isBooking ? 'Booking…' : 'Confirm booking'}
+                {isBooking ? 'Booking…' : `Confirm booking (${cart.length} item${cart.length === 1 ? '' : 's'})`}
               </button>
             </form>
           )}
@@ -188,6 +270,29 @@ export function BookLabTestPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
+  searchBox: {
+    position: 'relative',
+    marginBottom: '1.5rem',
+  },
+  resultList: {
+    listStyle: 'none',
+    margin: '0.5rem 0 0',
+    padding: 0,
+    border: '1px solid #e5e5e5',
+    borderRadius: 4,
+    maxWidth: 480,
+  },
+  resultButton: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    width: '100%',
+    padding: '0.5rem 0.75rem',
+    border: 'none',
+    borderBottom: '1px solid #f0f0f0',
+    background: 'none',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
   form: {
     border: '1px solid #e5e5e5',
     borderRadius: 8,
@@ -203,22 +308,26 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: '0.25rem',
     fontSize: '0.9rem',
+    maxWidth: 420,
   },
   input: {
     padding: '0.5rem',
     border: '1px solid #ccc',
     borderRadius: 4,
   },
-  itemList: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    marginBottom: '1.5rem',
+  table: {
+    borderCollapse: 'collapse',
+    width: '100%',
+    maxWidth: 800,
+    marginBottom: '1rem',
   },
-  itemLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.35rem 0',
+  th: {
+    textAlign: 'left',
+    borderBottom: '2px solid #e5e5e5',
+    padding: '0.5rem',
+  },
+  td: {
+    borderBottom: '1px solid #f0f0f0',
+    padding: '0.5rem',
   },
 };
