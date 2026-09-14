@@ -1,0 +1,15 @@
+# Activated via @ActiveProfiles("test"). Layers on top of the main
+# application.yml — only overrides what's needed to run without a real
+# Postgres instance: H2 (in PostgreSQL compatibility mode) with Hibernate
+# auto-generating the schema directly from the entities, Flyway disabled so
+# its Postgres-flavored migration SQL is never run against H2.
+spring:
+  datasource:
+    url: jdbc:h2:mem:medtech-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false

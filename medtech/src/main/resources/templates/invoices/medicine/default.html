@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Invoice</title>
+  <style>
+    /* Table-based layout throughout — OpenHTMLtoPDF (Flying Saucer/CSS 2.1)
+       does not support Flexbox; display:flex is silently dropped. */
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; color: #1a1a1a; font-size: 13px; }
+    .header-table { width: 100%; border-bottom: 3px solid #1F8A70; padding-bottom: 16px; margin-bottom: 16px; }
+    .header-table td { border: none; padding: 0; vertical-align: top; }
+    .logo { max-height: 64px; max-width: 200px; }
+    .franchise-name { font-size: 20px; font-weight: bold; margin: 0 0 4px; }
+    .muted { color: #666; font-size: 12px; margin: 2px 0; }
+    .invoice-meta { text-align: right; }
+    .invoice-meta h2 { margin: 0 0 4px; font-size: 18px; }
+    table.items { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    table.items th, table.items td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    table.items th { background: #f4f4f4; font-size: 11px; text-transform: uppercase; }
+    td.num, th.num { text-align: right; }
+    table.totals { width: 260px; margin-left: auto; margin-top: 16px; border-collapse: collapse; }
+    table.totals td { padding: 4px 0; border: none; }
+    table.totals td.value { text-align: right; }
+    table.totals tr.grand-total td { font-weight: bold; font-size: 15px; border-top: 2px solid #1a1a1a; padding-top: 8px; }
+    .footer { margin-top: 32px; font-size: 11px; color: #666; text-align: center; }
+  </style>
+</head>
+<body th:style="'font-family:' + ${fontFamily} + ';'">
+
+  <table class="header-table" th:style="'border-bottom-color:' + ${accentColor} + ';'">
+    <tr>
+      <td>
+        <img th:if="${franchise.logoUrl != null and !franchise.logoUrl.isEmpty()}"
+             th:src="${franchise.logoUrl}" class="logo" alt="Logo"/>
+        <p class="franchise-name" th:text="${franchise.name}">Franchise Name</p>
+        <p class="muted" th:if="${franchise.gstin != null and !franchise.gstin.isEmpty()}"
+           th:text="'GSTIN: ' + ${franchise.gstin}">GSTIN</p>
+        <p class="muted" th:if="${franchise.contactPhone != null and !franchise.contactPhone.isEmpty()}"
+           th:text="${franchise.contactPhone}">Phone</p>
+        <p class="muted" th:if="${franchise.contactEmail != null and !franchise.contactEmail.isEmpty()}"
+           th:text="${franchise.contactEmail}">Email</p>
+      </td>
+      <td class="invoice-meta">
+        <h2>INVOICE</h2>
+        <p class="muted" th:text="'No: ' + ${bill.invoiceNumber}">Invoice No</p>
+        <p class="muted" th:text="${invoiceDate}">Date</p>
+      </td>
+    </tr>
+  </table>
+
+  <div>
+    <p class="muted" th:if="${bill.customerName != null and !bill.customerName.isEmpty()}"
+       th:text="'Bill to: ' + ${bill.customerName}">Customer</p>
+    <p class="muted" th:if="${bill.customerPhone != null and !bill.customerPhone.isEmpty()}"
+       th:text="${bill.customerPhone}">Phone</p>
+    <p class="muted" th:if="${bill.patientEmail != null and !bill.patientEmail.isEmpty()}"
+       th:text="'Bill to: ' + ${bill.patientEmail}">Customer email</p>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="num">Qty</th>
+        <th class="num">Unit Price</th>
+        <th class="num">GST %</th>
+        <th class="num">Line Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="item : ${bill.items}">
+        <td th:text="${item.productName}">Item</td>
+        <td class="num" th:text="${item.quantity}">1</td>
+        <td class="num" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 2)}">0.00</td>
+        <td class="num" th:text="${#numbers.formatDecimal(item.gstPercentage, 1, 2)} + '%'">0%</td>
+        <td class="num" th:text="${#numbers.formatDecimal(item.lineTotal, 1, 2)}">0.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr>
+      <td>Subtotal</td>
+      <td class="value" th:text="${#numbers.formatDecimal(bill.subtotal, 1, 2)}">0.00</td>
+    </tr>
+    <tr>
+      <td>GST</td>
+      <td class="value" th:text="${#numbers.formatDecimal(bill.gstAmount, 1, 2)}">0.00</td>
+    </tr>
+    <tr class="grand-total">
+      <td>Total</td>
+      <td class="value" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 2)}">0.00</td>
+    </tr>
+  </table>
+
+  <p class="footer" th:if="${franchise.invoiceFooterNote != null and !franchise.invoiceFooterNote.isEmpty()}"
+     th:text="${franchise.invoiceFooterNote}">Footer note</p>
+
+</body>
+</html>

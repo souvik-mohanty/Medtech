@@ -1,0 +1,89 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: medtech
+
+  # -------------------- PostgreSQL --------------------
+  # Port 5434, not the default 5432 — this machine already has other
+  # projects' Postgres containers bound to 5432 and 5433.
+  datasource:
+    url: jdbc:postgresql://localhost:5434/medtech
+    username: medtech
+    password: medtech
+
+  # -------------------- JPA / Hibernate --------------------
+  jpa:
+    # Flyway (below) owns the schema — Hibernate must never auto-generate DDL
+    # against a real database. "validate" catches entity/schema drift early.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  # -------------------- Flyway --------------------
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # -------------------- Jackson --------------------
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  # -------------------- Validation --------------------
+  mvc:
+    throw-exception-if-no-handler-found: true
+
+  # -------------------- Thymeleaf (for invoice PDFs later) --------------------
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
+
+# -------------------- JWT --------------------
+jwt:
+  secret: medtech-secret-key-change-this-immediately
+  expiration: 86400000   # 24 hours (in ms)
+
+# -------------------- CORS --------------------
+# Local dev origins for the React admin web app (Vite) and Flutter web.
+cors:
+  allowed-origins:
+    - http://localhost:5173
+    - http://localhost:8081
+
+# -------------------- Google OAuth --------------------
+# Web/Android/iOS OAuth 2.0 client ID from Google Cloud Console. The ID token's
+# "aud" claim must match this value. This is a client ID, not a secret — safe
+# to commit/embed in clients. Never put the matching client SECRET here or
+# anywhere else in this codebase: the ID-token verification flow used by
+# GoogleOAuthService never needs it.
+google:
+  oauth:
+    client-id: 688656564041-ou8cogslqaon8gfafstqqe38jpvackn6.apps.googleusercontent.com
+
+# -------------------- Credential encryption --------------------
+# Used to encrypt franchise-owned payment gateway secrets at rest (see
+# PaymentGatewayConfig). 256-bit AES key, base64-encoded. This default is a
+# random dev key generated for this scaffold — replace it for any real
+# deployment (rotating it invalidates all previously-encrypted secrets).
+security:
+  credential-encryption-key: VSi0hZ4P/bm1h1f9YQinWFKW5BwhCXxtT1SXmEcHWsg=
+
+# -------------------- Actuator --------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# -------------------- Logging --------------------
+logging:
+  level:
+    root: INFO
+    org.springframework.security: INFO

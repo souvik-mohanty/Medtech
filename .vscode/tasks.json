@@ -1,0 +1,171 @@
+{
+  // Run all services: Terminal > Run Task... > "Run All Services"
+  // (or Ctrl+Shift+B / Cmd+Shift+B, since it's also the default build task).
+  //
+  // NOTE: mvnw / mvnw.cmd at the repo root are misplaced — pom.xml and its
+  // .mvn/wrapper/ actually live in medtech/, not here, so the wrapper as
+  // committed won't resolve there. These tasks use system Maven (`mvn`)
+  // instead, same as this project has been built with all along. Install
+  // Maven if `mvn -version` doesn't work, or fix the wrapper placement and
+  // switch these tasks back to it.
+  "version": "2.0.0",
+  "tasks": [
+    // ---------------- Infra ----------------
+    {
+      "label": "PostgreSQL: Start (Docker)",
+      "detail": "Idempotent — reuses/restarts medtech-postgres if it already exists (running or stopped), only creates it fresh the first time. No --rm: the container (and its data) persists across stop/start, otherwise 'docker stop' would destroy it and this couldn't restart it. Only needed if you don't already have Postgres running some other way. Credentials/db name must match application.yml (medtech/medtech/medtech). Port 5434, not 5432/5433 — those are already taken by other projects on this machine.",
+      "type": "shell",
+      "command": "if (docker ps -q --filter \"name=^/medtech-postgres$\") { Write-Host 'medtech-postgres is already running' } elseif (docker ps -aq --filter \"name=^/medtech-postgres$\") { docker start medtech-postgres } else { docker run --name medtech-postgres -e POSTGRES_DB=medtech -e POSTGRES_USER=medtech -e POSTGRES_PASSWORD=medtech -p 5434:5432 -d postgres:16 }",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "PostgreSQL: Stop (Docker)",
+      "detail": "Stops but does not remove the container — data and the container itself persist for next start.",
+      "type": "shell",
+      "command": "docker",
+      "args": ["stop", "medtech-postgres"],
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "PostgreSQL: Remove (Docker)",
+      "detail": "Deletes the container AND its data permanently — the next Start creates a fresh empty database. Not run automatically by anything.",
+      "type": "shell",
+      "command": "docker",
+      "args": ["rm", "-f", "medtech-postgres"],
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+
+    // ---------------- Backend ----------------
+    {
+      "label": "Backend: Spring Boot",
+      "detail": "medtech/ — Spring Boot API on :8080",
+      "type": "shell",
+      "command": "mvn",
+      "args": ["spring-boot:run"],
+      "options": { "cwd": "${workspaceFolder}/medtech" },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "services"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^ERROR (.*)$",
+          "file": 1,
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Starting MedtechApplication.*$",
+          "endsPattern": "^.*(Started MedtechApplication|APPLICATION FAILED TO START).*$"
+        }
+      }
+    },
+
+    // ---------------- Web ----------------
+    {
+      "label": "Admin Web: Vite Dev Server",
+      "detail": "admin-web/ — React admin panel on :5173",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": { "cwd": "${workspaceFolder}/admin-web" },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "services"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^(error).*$",
+          "message": 0
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE v\\d",
+          "endsPattern": "Local:\\s+http"
+        }
+      }
+    },
+
+    // ---------------- Aggregate ----------------
+    {
+      "label": "Services: Backend + Admin Web (parallel)",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Backend: Spring Boot", "Admin Web: Vite Dev Server"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Run All Services",
+      "detail": "PostgreSQL, then Backend + Admin Web together. Flutter apps are run individually (they're client apps on a device/emulator, not background services) — see the Flutter tasks below.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + Admin Web (parallel)"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+
+    // ---------------- Flutter apps ----------------
+    // Each needs `flutter create . --platforms=android,ios --org com.company.medtech`
+    // run once first (no platform folders exist yet — see apps/README.md)
+    // and a device/emulator attached. Not part of "Run All Services".
+    {
+      "label": "Flutter: patient_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/patient_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: franchise_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/franchise_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: doctor_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/doctor_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: lab_technician_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/lab_technician_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: delivery_partner_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/delivery_partner_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: customer_support_app",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}/apps/customer_support_app" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ]
+}
