@@ -6,12 +6,16 @@ spring:
     name: medtech
 
   # -------------------- PostgreSQL --------------------
-  # Port 5434, not the default 5432 — this machine already has other
-  # projects' Postgres containers bound to 5432 and 5433.
+  # Defaults to local Docker Postgres (port 5434, not the default 5432 —
+  # this machine already has other projects' Postgres containers bound to
+  # 5432 and 5433). Override via env vars (DB_URL/DB_USERNAME/DB_PASSWORD)
+  # or the gitignored application-local.yml (see that file / CLAUDE.md) to
+  # point at a hosted database (e.g. Neon) instead — never put real
+  # non-local credentials directly in this file, it's committed to git.
   datasource:
-    url: jdbc:postgresql://localhost:5434/medtech
-    username: medtech
-    password: medtech
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/medtech}
+    username: ${DB_USERNAME:medtech}
+    password: ${DB_PASSWORD:medtech}
 
   # -------------------- JPA / Hibernate --------------------
   jpa:

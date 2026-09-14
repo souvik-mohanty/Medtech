@@ -4,5 +4,6 @@ dist/
 build/
 .env
 .env.local
+application-local.yml
 *.log
 .DS_Store

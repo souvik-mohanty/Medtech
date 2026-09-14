@@ -36,9 +36,26 @@ cash; invoices are immutable once generated; frontend never computes money).
   and start clean). Manual equivalent: `docker run --name medtech-postgres
   -e POSTGRES_DB=medtech -e POSTGRES_USER=medtech -e
   POSTGRES_PASSWORD=medtech -p 5434:5432 -d postgres:16` (matches
-  `application.yml`'s datasource config — port **5434**, not the default
+  `application.yml`'s datasource defaults — port **5434**, not the default
   5432/5433, since other projects on this machine already have Postgres
   containers bound to those).
+- `application.yml`'s datasource block reads `DB_URL`/`DB_USERNAME`/
+  `DB_PASSWORD` env vars, falling back to the local Docker container above
+  — never put real non-local credentials in this file, it's committed to
+  git. To point at a hosted Postgres instead (e.g. Neon, when Docker isn't
+  available), use the gitignored `application-local.yml` (profile `local`:
+  `mvn spring-boot:run -Dspring-boot.run.profiles=local`, or
+  `SPRING_PROFILES_ACTIVE=local`) — see the template/comment in that file's
+  location, `medtech/src/main/resources/application-local.yml`. **If the
+  hosted database is shared with another project**, don't assume the
+  default `public` schema is empty — check first (this repo's own Neon
+  instance turned out to already hold an unrelated project's tables).
+  MedTech gets its own dedicated Postgres **schema** in that case
+  (`spring.flyway.schemas` + `spring.jpa.properties.hibernate.default_schema`
+  + `?currentSchema=...` on the JDBC URL, all set together), never the
+  shared `public` one — verified working end-to-end against Neon: Flyway
+  created the `medtech` schema and applied both migrations there without
+  touching the other project's tables in `public`.
 - Tests don't need real Postgres: `@ActiveProfiles("test")` (see
   `MedtechApplicationTests`, `BillingServiceTest`) swaps in H2 +
   Hibernate auto-DDL via `src/test/resources/application-test.yml` —
