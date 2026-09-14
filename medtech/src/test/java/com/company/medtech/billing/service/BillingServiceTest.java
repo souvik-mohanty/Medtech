@@ -3,6 +3,7 @@ package com.company.medtech.billing.service;
 import com.company.medtech.billing.dto.BillItemRequest;
 import com.company.medtech.billing.dto.BillResponse;
 import com.company.medtech.billing.dto.CreateCounterBillRequest;
+import com.company.medtech.billing.model.DiscountType;
 import com.company.medtech.common.enums.OrderStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.model.Franchise;
@@ -104,6 +105,57 @@ class BillingServiceTest {
                 .hasMessageContaining("expired");
 
         assertThat(productRepository.findById(expired.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void appliesAFlatDiscountToTheTotal() {
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 2))); // 2 * 25.00 * 1.12 = 56.00
+        request.setDiscountType(DiscountType.FLAT);
+        request.setDiscountValue(new BigDecimal("10.00"));
+        request.setNote("Loyalty discount");
+
+        BillResponse response = billingService.createCounterBill(franchise.getOwnerEmail(), request);
+
+        assertThat(response.getDiscountAmount()).isEqualByComparingTo(new BigDecimal("10.00"));
+        assertThat(response.getTotalAmount()).isEqualByComparingTo(new BigDecimal("46.00"));
+        assertThat(response.getNote()).isEqualTo("Loyalty discount");
+    }
+
+    @Test
+    void appliesAPercentageDiscountToTheTotal() {
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 2))); // 56.00 pre-discount
+        request.setDiscountType(DiscountType.PERCENTAGE);
+        request.setDiscountValue(new BigDecimal("10"));
+
+        BillResponse response = billingService.createCounterBill(franchise.getOwnerEmail(), request);
+
+        assertThat(response.getDiscountAmount()).isEqualByComparingTo(new BigDecimal("5.60"));
+        assertThat(response.getTotalAmount()).isEqualByComparingTo(new BigDecimal("50.40"));
+    }
+
+    @Test
+    void discountNeverTakesTheTotalBelowZero() {
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 2))); // 56.00 pre-discount
+        request.setDiscountType(DiscountType.FLAT);
+        request.setDiscountValue(new BigDecimal("999.00"));
+
+        BillResponse response = billingService.createCounterBill(franchise.getOwnerEmail(), request);
+
+        assertThat(response.getDiscountAmount()).isEqualByComparingTo(new BigDecimal("56.00"));
+        assertThat(response.getTotalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void noDiscountByDefault() {
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 1)));
+
+        BillResponse response = billingService.createCounterBill(franchise.getOwnerEmail(), request);
+
+        assertThat(response.getDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test

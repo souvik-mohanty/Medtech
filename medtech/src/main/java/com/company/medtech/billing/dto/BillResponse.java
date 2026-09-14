@@ -23,9 +23,11 @@ public class BillResponse {
     private List<BillItemResponse> items;
     private BigDecimal subtotal;
     private BigDecimal gstAmount;
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
     private PaymentMode paymentMode;
     private OrderStatus status;
     private String invoiceNumber;
+    private String note;
     private LocalDateTime createdAt;
 }

@@ -88,11 +88,18 @@
       <td>GST</td>
       <td class="value" th:text="${#numbers.formatDecimal(bill.gstAmount, 1, 2)}">0.00</td>
     </tr>
+    <tr th:if="${bill.discountAmount != null and bill.discountAmount.signum() > 0}">
+      <td>Discount</td>
+      <td class="value" th:text="'-' + ${#numbers.formatDecimal(bill.discountAmount, 1, 2)}">0.00</td>
+    </tr>
     <tr class="grand-total">
       <td>Total</td>
       <td class="value" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 2)}">0.00</td>
     </tr>
   </table>
+
+  <p class="muted" th:if="${bill.note != null and !bill.note.isEmpty()}"
+     th:text="'Note: ' + ${bill.note}">Note</p>
 
   <p class="footer" th:if="${franchise.invoiceFooterNote != null and !franchise.invoiceFooterNote.isEmpty()}"
      th:text="${franchise.invoiceFooterNote}">Footer note</p>

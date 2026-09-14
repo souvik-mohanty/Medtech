@@ -63,6 +63,14 @@ public class Bill {
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
+    /** Resolved rupee amount, computed once at creation from a flat or % input — see BillingService#applyDiscount. */
+    @Column(name = "discount_amount", nullable = false)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    /** Optional free-text note printed on the invoice. */
+    @Column(name = "note")
+    private String note;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_mode", nullable = false)
     private PaymentMode paymentMode;
@@ -165,6 +173,22 @@ public class Bill {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(BigDecimal discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public PaymentMode getPaymentMode() {

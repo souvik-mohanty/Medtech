@@ -16,6 +16,7 @@ public class ProductResponse {
     private BigDecimal sellingPrice;
     private BigDecimal purchasePrice;
     private LocalDate mfgDate;
+    private LocalDate purchaseDate;
     private LocalDate expiryDate;
     private int stockQuantity;
     private BigDecimal gstPercentage;

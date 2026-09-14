@@ -27,6 +27,9 @@ public class ProductRequest {
 
     private LocalDate mfgDate;
 
+    /** Defaults to today client-side; the shop owner can change it. */
+    private LocalDate purchaseDate;
+
     /** Optional — powers the dashboard's expiring-soon/expired insight. */
     private LocalDate expiryDate;
 

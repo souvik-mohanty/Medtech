@@ -4,6 +4,7 @@ import com.company.medtech.billing.dto.*;
 import com.company.medtech.billing.model.Bill;
 import com.company.medtech.billing.model.BillItem;
 import com.company.medtech.billing.model.BillSource;
+import com.company.medtech.billing.model.DiscountType;
 import com.company.medtech.billing.model.PaymentMode;
 import com.company.medtech.billing.repository.BillRepository;
 import com.company.medtech.common.enums.OrderStatus;
@@ -67,6 +68,8 @@ public class BillingService {
 
         reserveStockAndAddItems(bill, franchise.getId(), request.getItems());
         applyTotals(bill);
+        applyDiscount(bill, request.getDiscountType(), request.getDiscountValue());
+        bill.setNote(request.getNote());
 
         bill.setPaymentMode(PaymentMode.CASH);
         bill.setStatus(OrderStatus.PAID);
@@ -251,6 +254,30 @@ public class BillingService {
     }
 
     /**
+     * Counter-sale only (docs/PROJECT_SPEC.md doesn't call for this on the
+     * patient online-order path). Resolves a flat-or-percentage input into a
+     * fixed rupee amount at creation time — the invoice is immutable once
+     * generated, so only the resolved amount is stored, not the input type.
+     * Must run after applyTotals, since it needs subtotal+gstAmount.
+     */
+    private void applyDiscount(Bill bill, DiscountType type, BigDecimal value) {
+        BigDecimal preDiscountTotal = bill.getSubtotal().add(bill.getGstAmount());
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (type != null && value != null && value.signum() > 0) {
+            discountAmount = type == DiscountType.PERCENTAGE
+                    ? preDiscountTotal.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : value;
+            if (discountAmount.compareTo(preDiscountTotal) > 0) {
+                discountAmount = preDiscountTotal; // never take the total below zero
+            }
+        }
+
+        bill.setDiscountAmount(discountAmount);
+        bill.setTotalAmount(preDiscountTotal.subtract(discountAmount));
+    }
+
+    /**
      * Franchise-wise sequential invoice numbering (docs/PROJECT_SPEC.md).
      * Row-locks the franchise for the rest of this transaction
      * (PESSIMISTIC_WRITE via FranchiseRepository#findByIdForUpdate) so two
@@ -296,10 +323,12 @@ public class BillingService {
                 itemResponses,
                 bill.getSubtotal(),
                 bill.getGstAmount(),
+                bill.getDiscountAmount(),
                 bill.getTotalAmount(),
                 bill.getPaymentMode(),
                 bill.getStatus(),
                 bill.getInvoiceNumber(),
+                bill.getNote(),
                 bill.getCreatedAt()
         );
     }

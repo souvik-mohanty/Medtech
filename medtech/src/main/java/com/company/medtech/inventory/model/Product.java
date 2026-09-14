@@ -38,6 +38,10 @@ public class Product {
     @Column(name = "mfg_date")
     private LocalDate mfgDate;
 
+    /** When this stock was bought from the supplier. Defaults to today client-side, editable. */
+    @Column(name = "purchase_date")
+    private LocalDate purchaseDate;
+
     /** Optional — see ProductService#getInsights for expiring-soon/expired bucketing. */
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
@@ -106,6 +110,14 @@ public class Product {
 
     public void setMfgDate(LocalDate mfgDate) {
         this.mfgDate = mfgDate;
+    }
+
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
+
+    public void setPurchaseDate(LocalDate purchaseDate) {
+        this.purchaseDate = purchaseDate;
     }
 
     public LocalDate getExpiryDate() {
