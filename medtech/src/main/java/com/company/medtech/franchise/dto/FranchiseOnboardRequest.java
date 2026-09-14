@@ -1,17 +1,15 @@
 package com.company.medtech.franchise.dto;
 
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@AllArgsConstructor
-public class AdminFranchiseResponse {
+public class FranchiseOnboardRequest {
 
-    private String id;
-    private String ownerEmail;
+    @NotBlank
     private String name;
+
     private String gstin;
     private String contactPhone;
     private String contactEmail;
-    private boolean active;
 }

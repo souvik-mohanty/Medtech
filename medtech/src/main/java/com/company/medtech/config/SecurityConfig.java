@@ -4,6 +4,7 @@ import com.company.medtech.auth.security.JwtAuthenticationFilter;
 import com.company.medtech.common.constants.AppConstants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -43,8 +44,9 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/actuator/**"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole(AppConstants.ROLE_ADMIN)
-                        .requestMatchers("/api/franchise/**").hasAnyRole(AppConstants.ROLE_ADMIN, AppConstants.ROLE_FRANCHISE)
+                        .requestMatchers(HttpMethod.POST, "/api/franchise/onboard")
+                                .hasAnyRole(AppConstants.ROLE_PATIENT, AppConstants.ROLE_FRANCHISE)
+                        .requestMatchers("/api/franchise/**").hasRole(AppConstants.ROLE_FRANCHISE)
                         .requestMatchers("/api/patient/**").hasRole(AppConstants.ROLE_PATIENT)
                         .anyRequest().authenticated()
                 )

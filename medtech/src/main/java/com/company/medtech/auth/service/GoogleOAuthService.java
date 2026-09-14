@@ -12,13 +12,12 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
-import java.util.UUID;
 
 /**
- * Google Sign-In is currently the only login method for every role. A first
- * sign-in with no existing account auto-provisions a PATIENT; every other
- * role (Admin, Customer Support, Franchise Owner, Doctor, Lab Technician,
- * Delivery Partner) must be pre-provisioned by an admin.
+ * Google Sign-In is the only login method. A first sign-in with no existing
+ * account auto-provisions a PATIENT; the only other role, FRANCHISE (shop
+ * owner), is reached by a PATIENT self-onboarding via
+ * FranchiseService#onboard — never pre-provisioned.
  */
 @Service
 public class GoogleOAuthService {
@@ -38,7 +37,7 @@ public class GoogleOAuthService {
         this.restTemplate = restTemplateBuilder.build();
     }
 
-    public AuthResponse login(String idToken, String franchiseId) {
+    public AuthResponse login(String idToken) {
         Map<String, Object> payload = verifyIdToken(idToken);
 
         Object emailVerifiedClaim = payload.get("email_verified");
@@ -56,36 +55,8 @@ public class GoogleOAuthService {
             throw new BusinessException("User is inactive");
         }
 
-        validateFranchiseScope(user, franchiseId);
-
         String token = jwtService.generateToken(user.getEmail(), user.getRole());
         return new AuthResponse(token, user.getRole());
-    }
-
-    /**
-     * Doctor / lab technician / delivery partner accounts are scoped to one
-     * franchise (clinic/store): signing in is not enough, the franchise ID
-     * must be supplied and match the franchise their account is assigned to.
-     */
-    private void validateFranchiseScope(UserAuth user, String franchiseId) {
-        if (!AppConstants.FRANCHISE_SCOPED_ROLES.contains(user.getRole())) {
-            return;
-        }
-
-        if (franchiseId == null || franchiseId.isBlank()) {
-            throw new BusinessException("Franchise ID is required for this account type");
-        }
-
-        UUID parsedFranchiseId;
-        try {
-            parsedFranchiseId = UUID.fromString(franchiseId);
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException("Franchise ID does not match your assigned franchise");
-        }
-
-        if (!parsedFranchiseId.equals(user.getFranchiseId())) {
-            throw new BusinessException("Franchise ID does not match your assigned franchise");
-        }
     }
 
     private UserAuth registerPatient(String email) {

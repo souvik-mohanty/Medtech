@@ -13,11 +13,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * There is no admin onboarding API yet, so Franchise rows currently have to
- * be inserted directly into Postgres (same gap as Admin/Doctor/Lab
- * Technician/Delivery Partner/Customer Support accounts — see CLAUDE.md).
- * {@code ownerEmail} must match the {@code email} of an existing UserAuth
- * with role FRANCHISE.
+ * Created via self-service onboarding — see FranchiseService#onboard, which
+ * a Patient calls to become a shop owner. {@code ownerEmail} matches the
+ * {@code email} of the UserAuth row whose role was promoted to FRANCHISE.
  */
 @Entity
 @Table(name = "franchise")

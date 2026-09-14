@@ -10,9 +10,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * There is no admin onboarding API yet, so UserAuth rows currently have to
- * be inserted directly into Postgres for every role except Patient (which
- * self-registers on first Google sign-in) — see CLAUDE.md.
+ * Patient rows self-register on first Google sign-in; Franchise (shop owner)
+ * rows are created by a Patient self-onboarding via FranchiseService#onboard.
+ * No manual provisioning is needed for either role.
  */
 @Entity
 @Table(name = "user_auth")
@@ -33,10 +33,6 @@ public class UserAuth {
 
     @Column(nullable = false)
     private boolean active;
-
-    /** Only set for franchise-scoped staff — see AppConstants.FRANCHISE_SCOPED_ROLES. */
-    @Column(name = "franchise_id")
-    private UUID franchiseId;
 
     public UUID getId() {
         return id;
@@ -76,13 +72,5 @@ public class UserAuth {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public UUID getFranchiseId() {
-        return franchiseId;
-    }
-
-    public void setFranchiseId(UUID franchiseId) {
-        this.franchiseId = franchiseId;
     }
 }
