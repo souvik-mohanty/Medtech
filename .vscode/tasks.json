@@ -41,10 +41,36 @@
     // ---------------- Backend ----------------
     {
       "label": "Backend: Spring Boot",
-      "detail": "medtech/ — Spring Boot API on :8080",
+      "detail": "medtech/ — Spring Boot API on :8080, local Docker Postgres (needs 'PostgreSQL: Start (Docker)' first)",
       "type": "shell",
       "command": "mvn",
       "args": ["spring-boot:run"],
+      "options": { "cwd": "${workspaceFolder}/medtech" },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "services"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^ERROR (.*)$",
+          "file": 1,
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Starting MedtechApplication.*$",
+          "endsPattern": "^.*(Started MedtechApplication|APPLICATION FAILED TO START).*$"
+        }
+      }
+    },
+    {
+      "label": "Backend: Spring Boot (Neon)",
+      "detail": "medtech/ — Spring Boot API on :8080, hosted Postgres (Neon) via the 'local' profile — needs medtech/src/main/resources/application-local.yml (gitignored, not included in this repo). No Docker/local Postgres needed.",
+      "type": "shell",
+      "command": "mvn",
+      "args": ["spring-boot:run", "-Dspring-boot.run.profiles=local"],
       "options": { "cwd": "${workspaceFolder}/medtech" },
       "isBackground": true,
       "presentation": {
@@ -102,10 +128,24 @@
     },
     {
       "label": "Run All Services",
-      "detail": "PostgreSQL, then Backend + Web together.",
+      "detail": "PostgreSQL, then Backend + Web together. Local Docker Postgres — use 'Run All Services (Neon)' instead to skip Docker and use the hosted database.",
       "dependsOrder": "sequence",
       "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + Web (parallel)"],
       "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Services: Backend (Neon) + Web (parallel)",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Backend: Spring Boot (Neon)", "Web: Vite Dev Server"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Run All Services (Neon)",
+      "detail": "Backend (hosted Postgres) + Web together — no Docker/local Postgres step, since Neon needs neither.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Services: Backend (Neon) + Web (parallel)"],
+      "group": "build",
       "problemMatcher": []
     }
   ]
