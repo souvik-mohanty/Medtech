@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class ProductRequest {
@@ -18,7 +19,16 @@ public class ProductRequest {
 
     @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
-    private BigDecimal price;
+    private BigDecimal sellingPrice;
+
+    /** Optional cost price, used for inventory valuation insights. */
+    @DecimalMin(value = "0.0", inclusive = true)
+    private BigDecimal purchasePrice;
+
+    private LocalDate mfgDate;
+
+    /** Optional — powers the dashboard's expiring-soon/expired insight. */
+    private LocalDate expiryDate;
 
     @NotNull
     @Min(0)

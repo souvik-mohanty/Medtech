@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -27,8 +28,19 @@ public class Product {
     /** e.g. "strip", "bottle", "box". Free text, kept simple for now. */
     private String unit;
 
-    @Column(nullable = false)
-    private BigDecimal price;
+    @Column(name = "selling_price", nullable = false)
+    private BigDecimal sellingPrice;
+
+    /** Cost price — optional, used for inventory valuation insights. */
+    @Column(name = "purchase_price")
+    private BigDecimal purchasePrice;
+
+    @Column(name = "mfg_date")
+    private LocalDate mfgDate;
+
+    /** Optional — see ProductService#getInsights for expiring-soon/expired bucketing. */
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
 
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
@@ -72,12 +84,36 @@ public class Product {
         this.unit = unit;
     }
 
-    public BigDecimal getPrice() {
-        return price;
+    public BigDecimal getSellingPrice() {
+        return sellingPrice;
     }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
+    public void setSellingPrice(BigDecimal sellingPrice) {
+        this.sellingPrice = sellingPrice;
+    }
+
+    public BigDecimal getPurchasePrice() {
+        return purchasePrice;
+    }
+
+    public void setPurchasePrice(BigDecimal purchasePrice) {
+        this.purchasePrice = purchasePrice;
+    }
+
+    public LocalDate getMfgDate() {
+        return mfgDate;
+    }
+
+    public void setMfgDate(LocalDate mfgDate) {
+        this.mfgDate = mfgDate;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
     }
 
     public int getStockQuantity() {

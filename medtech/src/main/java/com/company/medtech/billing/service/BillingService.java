@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -184,6 +185,7 @@ public class BillingService {
             Product product = productRepository.findByIdAndFranchiseId(productId, franchiseId)
                     .orElseThrow(() -> new BusinessException("Product not found in your inventory: " + req.getProductId()));
 
+            assertNotExpired(product);
             BillItem item = toBillItem(product, req.getQuantity());
 
             if (productRepository.decrementStock(product.getId(), req.getQuantity()) == 0) {
@@ -200,6 +202,8 @@ public class BillingService {
             Product product = productRepository.findByIdAndFranchiseId(productId, franchiseId)
                     .orElseThrow(() -> new BusinessException("Product not found: " + req.getProductId()));
 
+            assertNotExpired(product);
+
             if (product.getStockQuantity() < req.getQuantity()) {
                 throw new BusinessException("Insufficient stock for " + product.getName());
             }
@@ -208,10 +212,17 @@ public class BillingService {
         }
     }
 
+    /** docs/PROJECT_SPEC.md §7.8: "cannot sell expired medicines." */
+    private void assertNotExpired(Product product) {
+        if (product.getExpiryDate() != null && product.getExpiryDate().isBefore(LocalDate.now())) {
+            throw new BusinessException("'" + product.getName() + "' has expired and cannot be sold");
+        }
+    }
+
     // ---- totals ----
 
     private BillItem toBillItem(Product product, int quantity) {
-        BigDecimal unitPrice = product.getPrice();
+        BigDecimal unitPrice = product.getSellingPrice();
         BigDecimal gstPercentage = product.getGstPercentage() != null ? product.getGstPercentage() : BigDecimal.ZERO;
 
         BigDecimal lineSubtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));

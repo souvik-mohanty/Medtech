@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,6 +91,22 @@ class BillingServiceTest {
     }
 
     @Test
+    void rejectsCounterSaleOfAnExpiredProduct() {
+        Product expired = newProduct("Old Cough Syrup", new BigDecimal("50.00"), 10, BigDecimal.ZERO);
+        expired.setExpiryDate(LocalDate.now().minusDays(1));
+        productRepository.save(expired);
+
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(expired.getId(), 1)));
+
+        assertThatThrownBy(() -> billingService.createCounterBill(franchise.getOwnerEmail(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("expired");
+
+        assertThat(productRepository.findById(expired.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
     void invoiceNumbersAreSequentialPerFranchise() {
         CreateCounterBillRequest request1 = new CreateCounterBillRequest();
         request1.setItems(List.of(itemRequest(paracetamol.getId(), 1)));
@@ -106,7 +123,7 @@ class BillingServiceTest {
         Product product = new Product();
         product.setFranchiseId(franchise.getId());
         product.setName(name);
-        product.setPrice(price);
+        product.setSellingPrice(price);
         product.setStockQuantity(stock);
         product.setGstPercentage(gst);
         product.setActive(true);
