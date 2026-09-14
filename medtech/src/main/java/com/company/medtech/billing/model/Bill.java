@@ -75,6 +75,10 @@ public class Bill {
     @Column(name = "discount_amount", nullable = false)
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    /** The coupon that produced discountAmount, if any — printed on the invoice next to the discount line. */
+    @Column(name = "coupon_code")
+    private String couponCode;
+
     /** Optional free-text note printed on the invoice. */
     @Column(name = "note")
     private String note;
@@ -199,6 +203,14 @@ public class Bill {
 
     public void setDiscountAmount(BigDecimal discountAmount) {
         this.discountAmount = discountAmount;
+    }
+
+    public String getCouponCode() {
+        return couponCode;
+    }
+
+    public void setCouponCode(String couponCode) {
+        this.couponCode = couponCode;
     }
 
     public String getNote() {

@@ -30,8 +30,13 @@ public class DoctorAppointment {
     @Column(name = "schedule_id", nullable = false)
     private UUID scheduleId;
 
-    @Column(name = "patient_email", nullable = false)
+    /** Null for an owner-entered walk-in appointment with no linked patient account — see #customerName. */
+    @Column(name = "patient_email")
     private String patientEmail;
+
+    /** Only set on an owner-entered walk-in appointment (patientEmail null) — the display name until an account exists. */
+    @Column(name = "customer_name")
+    private String customerName;
 
     /** Only set for LIMITED schedules. */
     @Column(name = "serial_number")
@@ -90,6 +95,14 @@ public class DoctorAppointment {
 
     public void setPatientEmail(String patientEmail) {
         this.patientEmail = patientEmail;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
     }
 
     public Integer getSerialNumber() {

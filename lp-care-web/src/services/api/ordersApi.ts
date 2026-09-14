@@ -12,6 +12,7 @@ interface BackendOrder {
   subtotal: number
   gstAmount: number
   discountAmount: number
+  couponCode: string | null
   totalAmount: number
   paymentMode: OrderPaymentMode
   status: OrderStatus
@@ -36,6 +37,7 @@ function toOrder(o: BackendOrder): Order {
     subtotal: o.subtotal,
     gstAmount: o.gstAmount,
     discountAmount: o.discountAmount,
+    couponCode: o.couponCode ?? undefined,
     totalAmount: o.totalAmount,
     paymentMode: o.paymentMode,
     status: o.status,
@@ -76,6 +78,7 @@ export interface CreateCounterBillInput {
   customerPhone?: string
   discountType?: "FLAT" | "PERCENTAGE"
   discountValue?: number
+  couponCode?: string
   note?: string
   referralId?: string
 }

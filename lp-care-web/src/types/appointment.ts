@@ -21,7 +21,9 @@ export type CreateDoctorScheduleInput = Omit<DoctorSchedule, "id" | "bookedCount
 
 export interface DoctorAppointment {
   id: string
-  patientEmail: string
+  patientEmail?: string
+  /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
+  customerName?: string
   doctorName: string
   doctorSpecialization?: string
   scheduleDate: string
@@ -44,4 +46,15 @@ export interface BookAppointmentInput {
   mobileNumber: string
   note?: string
   paymentMode: "CASH" | "ONLINE"
+}
+
+export interface WalkInAppointmentInput {
+  scheduleId: string
+  customerName: string
+  mobileNumber: string
+  /** Optional — if given, this appointment becomes visible once the patient logs in with this email. */
+  patientEmail?: string
+  note?: string
+  /** Whether the fee was collected right now (true) or is still owed (false, confirmed later via mark-paid). */
+  paidNow: boolean
 }

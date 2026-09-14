@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { CheckCircle2, CreditCard, Loader2, ShieldCheck, Trash2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -56,6 +57,8 @@ export function OwnerSettingsPage() {
   const [freeCollectionMinOrder, setFreeCollectionMinOrder] = useState("")
   const [pincodes, setPincodes] = useState<string[]>([])
   const [pincodeInput, setPincodeInput] = useState("")
+  const [invoiceHeaderNote, setInvoiceHeaderNote] = useState("")
+  const [invoiceFooterNote, setInvoiceFooterNote] = useState("")
 
   useEffect(() => {
     if (!profile) return
@@ -64,6 +67,8 @@ export function OwnerSettingsPage() {
     setCollectionCharge(profile.collectionCharge)
     setFreeCollectionMinOrder(profile.freeCollectionMinOrder != null ? String(profile.freeCollectionMinOrder) : "")
     setPincodes(profile.serviceablePincodes)
+    setInvoiceHeaderNote(profile.invoiceHeaderNote ?? "")
+    setInvoiceFooterNote(profile.invoiceFooterNote ?? "")
   }, [profile])
 
   function addPincode() {
@@ -85,6 +90,8 @@ export function OwnerSettingsPage() {
         collectionCharge,
         freeCollectionMinOrder: trimmedMinOrder === "" ? null : Number(trimmedMinOrder),
         serviceablePincodes: pincodes,
+        invoiceHeaderNote: invoiceHeaderNote || null,
+        invoiceFooterNote: invoiceFooterNote || null,
       })
     },
     onSuccess: () => {
@@ -112,6 +119,33 @@ export function OwnerSettingsPage() {
             <div className="space-y-1.5">
               <Label htmlFor="s-address">Address</Label>
               <Input id="s-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+          </div>
+        </DashboardSectionCard>
+
+        <DashboardSectionCard>
+          <h2 className="mb-4 font-semibold">Invoice PDF</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Printed on every generated invoice — header appears below your logo/contact details, footer appears at the bottom of the page.
+          </p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="s-inv-header">Header note (optional)</Label>
+              <Textarea
+                id="s-inv-header"
+                placeholder="e.g. Thank you for choosing us — terms and conditions apply."
+                value={invoiceHeaderNote}
+                onChange={(e) => setInvoiceHeaderNote(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="s-inv-footer">Footer note (optional)</Label>
+              <Textarea
+                id="s-inv-footer"
+                placeholder="e.g. This is a computer-generated invoice and does not require a signature."
+                value={invoiceFooterNote}
+                onChange={(e) => setInvoiceFooterNote(e.target.value)}
+              />
             </div>
           </div>
         </DashboardSectionCard>

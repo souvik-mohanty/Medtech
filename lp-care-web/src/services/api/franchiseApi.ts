@@ -17,6 +17,7 @@ export interface FranchiseProfile {
   logoUrl: string | null
   accentColorHex: string
   invoiceFont: "DEFAULT" | "SERIF" | "MONOSPACE"
+  invoiceHeaderNote: string | null
   invoiceFooterNote: string | null
   invoicePrefix: string | null
   /** Charged on HOME_COLLECTION bookings below freeCollectionMinOrder (or always, if that's unset). */

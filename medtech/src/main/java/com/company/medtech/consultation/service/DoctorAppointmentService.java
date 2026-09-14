@@ -6,6 +6,7 @@ import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.common.exceptions.ResourceNotFoundException;
 import com.company.medtech.consultation.dto.DoctorAppointmentRequest;
 import com.company.medtech.consultation.dto.DoctorAppointmentResponse;
+import com.company.medtech.consultation.dto.WalkInAppointmentRequest;
 import com.company.medtech.consultation.model.DoctorAppointment;
 import com.company.medtech.consultation.model.DoctorSchedule;
 import com.company.medtech.consultation.model.SlotType;
@@ -102,6 +103,60 @@ public class DoctorAppointmentService {
         return toResponse(doctorAppointmentRepository.save(appointment), schedule);
     }
 
+    /**
+     * Owner action — books a walk-in patient at the counter against one of
+     * their own schedules. Always cash; no online-gateway check needed since
+     * the patient is physically present. Mirrors lab's createWalkInBooking:
+     * patientEmail is optional and, if given, makes this appointment visible
+     * once that email later logs in (see DoctorAppointmentRepository#findByPatientEmailOrderByCreatedAtDesc).
+     */
+    @Transactional
+    public DoctorAppointmentResponse bookWalkInAppointment(String ownerEmail, WalkInAppointmentRequest request) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        UUID scheduleId = parseId(request.getScheduleId(), "DoctorSchedule");
+
+        DoctorSchedule schedule = doctorScheduleRepository.findByIdAndFranchiseId(scheduleId, franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
+
+        if (!schedule.isActive()) {
+            throw new BusinessException("This schedule is no longer open for booking");
+        }
+
+        Integer serialNumber = null;
+        if (schedule.getSlotType() == SlotType.LIMITED) {
+            DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
+                    .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
+            if (locked.getBookedCount() >= locked.getMaxPatients()) {
+                throw new BusinessException("This session is fully booked");
+            }
+            serialNumber = locked.getBookedCount() + 1;
+            locked.setBookedCount(serialNumber);
+            doctorScheduleRepository.save(locked);
+            schedule = locked;
+        }
+
+        String patientEmail = request.getPatientEmail() != null && !request.getPatientEmail().isBlank()
+                ? request.getPatientEmail().trim().toLowerCase()
+                : null;
+
+        DoctorAppointment appointment = new DoctorAppointment();
+        appointment.setFranchiseId(franchise.getId());
+        appointment.setScheduleId(schedule.getId());
+        appointment.setPatientEmail(patientEmail);
+        appointment.setCustomerName(request.getCustomerName());
+        appointment.setSerialNumber(serialNumber);
+        appointment.setMobileNumber(request.getMobileNumber());
+        appointment.setNote(request.getNote());
+        appointment.setFee(schedule.getFee());
+        appointment.setPaymentMode(PaymentMode.CASH);
+        LocalDateTime now = LocalDateTime.now();
+        appointment.setStatus(request.isPaidNow() ? OrderStatus.PAID : OrderStatus.PAYMENT_PENDING);
+        appointment.setCreatedAt(now);
+        appointment.setPaidAt(request.isPaidNow() ? now : null);
+
+        return toResponse(doctorAppointmentRepository.save(appointment), schedule);
+    }
+
     @Transactional(readOnly = true)
     public List<DoctorAppointmentResponse> listForOwner(String ownerEmail) {
         Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
@@ -153,6 +208,7 @@ public class DoctorAppointmentService {
         return new DoctorAppointmentResponse(
                 appointment.getId().toString(),
                 appointment.getPatientEmail(),
+                appointment.getCustomerName(),
                 schedule.getDoctorName(),
                 schedule.getDoctorSpecialization(),
                 schedule.getScheduleDate(),

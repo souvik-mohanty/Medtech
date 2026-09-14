@@ -17,6 +17,8 @@ public class DoctorAppointmentResponse {
 
     private String id;
     private String patientEmail;
+    /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
+    private String customerName;
     private String doctorName;
     private String doctorSpecialization;
     private LocalDate scheduleDate;

@@ -38,6 +38,8 @@ export interface Order {
   subtotal: number
   gstAmount: number
   discountAmount: number
+  /** The coupon that produced discountAmount, if any. */
+  couponCode?: string
   totalAmount: number
   paymentMode: OrderPaymentMode
   status: OrderStatus

@@ -153,7 +153,7 @@ export function OwnerDoctorsPage() {
                   {appointments.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
-                        <p className="font-medium">{a.patientEmail}</p>
+                        <p className="font-medium">{a.patientEmail ?? a.customerName ?? "Walk-in"}</p>
                         <p className="text-xs text-muted-foreground">{a.mobileNumber}</p>
                         {a.note && <p className="text-xs text-muted-foreground">Note: {a.note}</p>}
                       </TableCell>

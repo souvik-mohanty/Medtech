@@ -49,6 +49,9 @@
     </tr>
   </table>
 
+  <p class="muted" th:if="${franchise.invoiceHeaderNote != null and !franchise.invoiceHeaderNote.isEmpty()}"
+     th:text="${franchise.invoiceHeaderNote}">Header note</p>
+
   <div>
     <p class="muted" th:if="${bill.customerName != null and !bill.customerName.isEmpty()}"
        th:text="'Bill to: ' + ${bill.customerName}">Customer</p>
@@ -81,7 +84,7 @@
 
   <table class="totals">
     <tr>
-      <td>Subtotal</td>
+      <td>Total Bill</td>
       <td class="value" th:text="${#numbers.formatDecimal(bill.subtotal, 1, 2)}">0.00</td>
     </tr>
     <tr>
@@ -89,7 +92,7 @@
       <td class="value" th:text="${#numbers.formatDecimal(bill.gstAmount, 1, 2)}">0.00</td>
     </tr>
     <tr th:if="${bill.discountAmount != null and bill.discountAmount.signum() > 0}">
-      <td>Discount</td>
+      <td th:text="${bill.couponCode != null and !bill.couponCode.isEmpty()} ? 'Coupon Applied (' + ${bill.couponCode} + ')' : 'Discount'">Coupon Applied</td>
       <td class="value" th:text="'-' + ${#numbers.formatDecimal(bill.discountAmount, 1, 2)}">0.00</td>
     </tr>
     <tr class="grand-total">

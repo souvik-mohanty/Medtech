@@ -19,6 +19,7 @@ public class FranchiseResponse {
     private String logoUrl;
     private String accentColorHex;
     private InvoiceFont invoiceFont;
+    private String invoiceHeaderNote;
     private String invoiceFooterNote;
     private String invoicePrefix;
     private BigDecimal collectionCharge;

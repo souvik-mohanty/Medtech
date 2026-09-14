@@ -99,6 +99,7 @@ public class BillingService {
         reserveStockAndAddItems(bill, franchise.getId(), request.getItems());
         applyTotals(bill);
         applyDiscount(bill, request.getDiscountType(), request.getDiscountValue());
+        bill.setCouponCode(request.getDiscountValue() != null ? request.getCouponCode() : null);
         bill.setNote(request.getNote());
 
         bill.setPaymentMode(PaymentMode.CASH);
@@ -414,6 +415,7 @@ public class BillingService {
                 bill.getSubtotal(),
                 bill.getGstAmount(),
                 bill.getDiscountAmount(),
+                bill.getCouponCode(),
                 bill.getTotalAmount(),
                 bill.getPaymentMode(),
                 bill.getStatus(),

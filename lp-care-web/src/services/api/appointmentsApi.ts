@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient"
 import { getFranchiseId } from "@/services/api/franchiseApi"
-import type { AppointmentStatus, BookAppointmentInput, CreateDoctorScheduleInput, DoctorAppointment, DoctorSchedule, SlotType } from "@/types"
+import type { AppointmentStatus, BookAppointmentInput, CreateDoctorScheduleInput, DoctorAppointment, DoctorSchedule, SlotType, WalkInAppointmentInput } from "@/types"
 
 interface BackendDoctorSchedule {
   id: string
@@ -34,7 +34,8 @@ function toDoctorSchedule(s: BackendDoctorSchedule): DoctorSchedule {
 
 interface BackendDoctorAppointment {
   id: string
-  patientEmail: string
+  patientEmail: string | null
+  customerName: string | null
   doctorName: string
   doctorSpecialization: string | null
   scheduleDate: string
@@ -54,7 +55,8 @@ interface BackendDoctorAppointment {
 function toDoctorAppointment(a: BackendDoctorAppointment): DoctorAppointment {
   return {
     id: a.id,
-    patientEmail: a.patientEmail,
+    patientEmail: a.patientEmail ?? undefined,
+    customerName: a.customerName ?? undefined,
     doctorName: a.doctorName,
     doctorSpecialization: a.doctorSpecialization ?? undefined,
     scheduleDate: a.scheduleDate,
@@ -111,5 +113,11 @@ export async function getOwnerAppointments(): Promise<DoctorAppointment[]> {
 /** Owner action — confirms a CASH appointment's fee was collected at the visit. */
 export async function markAppointmentPaid(id: string): Promise<DoctorAppointment> {
   const response = await apiClient.patch<{ data: BackendDoctorAppointment }>(`/api/franchise/doctors/appointments/${id}/mark-paid`)
+  return toDoctorAppointment(response.data.data)
+}
+
+/** Owner action — books a walk-in patient at the counter against one of their own schedules. Always cash. */
+export async function bookWalkInAppointment(input: WalkInAppointmentInput): Promise<DoctorAppointment> {
+  const response = await apiClient.post<{ data: BackendDoctorAppointment }>("/api/franchise/doctors/appointments/walk-in", input)
   return toDoctorAppointment(response.data.data)
 }

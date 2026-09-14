@@ -55,6 +55,9 @@ public class Franchise {
     @Column(name = "invoice_font", nullable = false)
     private InvoiceFont invoiceFont = InvoiceFont.DEFAULT;
 
+    @Column(name = "invoice_header_note")
+    private String invoiceHeaderNote;
+
     @Column(name = "invoice_footer_note")
     private String invoiceFooterNote;
 
@@ -165,6 +168,14 @@ public class Franchise {
 
     public void setInvoiceFont(InvoiceFont invoiceFont) {
         this.invoiceFont = invoiceFont;
+    }
+
+    public String getInvoiceHeaderNote() {
+        return invoiceHeaderNote;
+    }
+
+    public void setInvoiceHeaderNote(String invoiceHeaderNote) {
+        this.invoiceHeaderNote = invoiceHeaderNote;
     }
 
     public String getInvoiceFooterNote() {

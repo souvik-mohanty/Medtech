@@ -25,6 +25,7 @@ public class BillResponse {
     private BigDecimal subtotal;
     private BigDecimal gstAmount;
     private BigDecimal discountAmount;
+    private String couponCode;
     private BigDecimal totalAmount;
     private PaymentMode paymentMode;
     private OrderStatus status;

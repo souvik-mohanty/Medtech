@@ -68,6 +68,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
         customerPhone: customerPhone || undefined,
         discountType: selectedCoupon?.type,
         discountValue: selectedCoupon?.value,
+        couponCode: selectedCoupon?.code,
         referralId: referralId || undefined,
       }),
     onSuccess: () => {

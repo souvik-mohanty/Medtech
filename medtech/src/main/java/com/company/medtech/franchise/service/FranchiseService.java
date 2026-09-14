@@ -67,6 +67,7 @@ public class FranchiseService {
         if (request.getInvoiceFont() != null) {
             franchise.setInvoiceFont(request.getInvoiceFont());
         }
+        franchise.setInvoiceHeaderNote(request.getInvoiceHeaderNote());
         franchise.setInvoiceFooterNote(request.getInvoiceFooterNote());
         if (request.getInvoicePrefix() != null && !request.getInvoicePrefix().isBlank()) {
             franchise.setInvoicePrefix(request.getInvoicePrefix().trim().toUpperCase());
@@ -97,6 +98,7 @@ public class FranchiseService {
                 franchise.getLogoUrl(),
                 franchise.getAccentColorHex(),
                 franchise.getInvoiceFont(),
+                franchise.getInvoiceHeaderNote(),
                 franchise.getInvoiceFooterNote(),
                 franchise.getInvoicePrefix(),
                 franchise.getCollectionCharge(),

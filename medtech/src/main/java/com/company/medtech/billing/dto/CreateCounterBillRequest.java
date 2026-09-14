@@ -25,6 +25,9 @@ public class CreateCounterBillRequest {
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal discountValue;
 
+    /** Optional — the coupon code that produced discountType/discountValue, printed on the invoice. */
+    private String couponCode;
+
     /** Optional free-text note printed on this invoice. */
     private String note;
 
