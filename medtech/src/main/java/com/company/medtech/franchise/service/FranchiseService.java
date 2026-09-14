@@ -14,6 +14,8 @@ import com.company.medtech.franchise.repository.FranchiseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class FranchiseService {
 
@@ -83,6 +85,16 @@ public class FranchiseService {
 
     public FranchiseResponse getProfile(String ownerEmail) {
         return toResponse(getByOwnerEmail(ownerEmail));
+    }
+
+    /**
+     * Patient-facing "which shop(s) can I use" lookup — there's no browse-
+     * all-shops UI in the client yet since only one franchise exists today,
+     * but this stays a list (not a single "the" franchise) so onboarding a
+     * second one doesn't need an API shape change later.
+     */
+    public List<FranchiseResponse> listActive() {
+        return franchiseRepository.findByActiveTrue().stream().map(this::toResponse).toList();
     }
 
     public FranchiseResponse updateBranding(String ownerEmail, FranchiseBrandingRequest request) {

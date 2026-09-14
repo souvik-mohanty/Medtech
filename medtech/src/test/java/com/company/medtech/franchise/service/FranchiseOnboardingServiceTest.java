@@ -53,6 +53,16 @@ class FranchiseOnboardingServiceTest {
                 .hasMessageContaining("already have a franchise");
     }
 
+    @Test
+    void listActiveIncludesAFreshlyOnboardedFranchise() {
+        String email = registerPatient();
+        franchiseService.onboard(email, request("Discoverable Pharmacy"));
+
+        assertThat(franchiseService.listActive())
+                .extracting("name")
+                .contains("Discoverable Pharmacy");
+    }
+
     private String registerPatient() {
         String email = "patient-" + UUID.randomUUID() + "@example.com";
         UserAuth patient = new UserAuth();

@@ -6,12 +6,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface FranchiseRepository extends JpaRepository<Franchise, UUID> {
 
     Optional<Franchise> findByOwnerEmail(String ownerEmail);
+
+    /** Patient-facing "which shop(s) exist" lookup — currently always exactly one. */
+    List<Franchise> findByActiveTrue();
 
     /**
      * Row-locks the franchise for the rest of the current transaction — used
