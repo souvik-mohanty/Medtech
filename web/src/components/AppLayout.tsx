@@ -13,7 +13,8 @@ const SHOP_NAV = [
 ];
 
 const PATIENT_NAV = [
-  { to: '/patient', label: 'Browse & Order', end: true },
+  { to: '/patient', label: 'Home', end: true },
+  { to: '/patient/order-medicine', label: 'Order Medicine' },
   { to: '/patient/lab-tests', label: 'Book Lab Test' },
   { to: '/onboard', label: 'Become a Shop Owner' },
 ];

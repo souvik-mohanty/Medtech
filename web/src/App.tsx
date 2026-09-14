@@ -11,6 +11,7 @@ import { LabTestsPage } from './pages/shop-owner/LabTestsPage';
 import { LabBookingsPage } from './pages/shop-owner/LabBookingsPage';
 import { BrandingPage } from './pages/shop-owner/BrandingPage';
 import { PaymentGatewayPage } from './pages/shop-owner/PaymentGatewayPage';
+import { PatientHomePage } from './pages/patient/PatientHomePage';
 import { BrowsePage } from './pages/patient/BrowsePage';
 import { PlaceOrderPage } from './pages/patient/PlaceOrderPage';
 import { BookLabTestPage } from './pages/patient/BookLabTestPage';
@@ -104,6 +105,14 @@ export default function App() {
 
           <Route
             path="/patient"
+            element={
+              <RoleRoute allow="PATIENT">
+                <PatientHomePage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/patient/order-medicine"
             element={
               <RoleRoute allow="PATIENT">
                 <BrowsePage />

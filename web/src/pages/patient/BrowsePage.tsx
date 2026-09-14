@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import type { CSSProperties, FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { errorMessage } from '../../api/client';
 import { browseFranchiseProducts } from '../../api/patientApi';
 import type { Product } from '../../api/franchiseApi';
+import { useActiveFranchise } from './useActiveFranchise';
 
 interface CartLine {
   productId: string;
@@ -13,34 +14,24 @@ interface CartLine {
   quantity: number;
 }
 
-/**
- * There's no "list all shops" endpoint yet — a patient needs a franchise ID
- * (shared by the shop, e.g. a link/code) to browse its catalog.
- */
 export function BrowsePage() {
   const navigate = useNavigate();
-  const [franchiseId, setFranchiseId] = useState('');
+  const { franchise, isLoading: isLoadingFranchise, error: franchiseError } = useActiveFranchise();
+
   const [products, setProducts] = useState<Product[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
 
-  async function handleBrowse(e: FormEvent) {
-    e.preventDefault();
-    if (!franchiseId.trim()) return;
-
+  useEffect(() => {
+    if (!franchise) return;
     setIsLoading(true);
     setError(null);
-    setCart({});
-    try {
-      setProducts(await browseFranchiseProducts(franchiseId.trim()));
-    } catch (err) {
-      setError(errorMessage(err));
-      setProducts(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    browseFranchiseProducts(franchise.id)
+      .then(setProducts)
+      .catch((err) => setError(errorMessage(err)))
+      .finally(() => setIsLoading(false));
+  }, [franchise]);
 
   function setQuantity(productId: string, quantity: number) {
     setCart((prev) => {
@@ -55,6 +46,7 @@ export function BrowsePage() {
   }
 
   function handleProceed() {
+    if (!franchise) return;
     const lines: CartLine[] = Object.entries(cart)
       .map(([productId, quantity]) => {
         const product = products?.find((p) => p.id === productId);
@@ -63,35 +55,41 @@ export function BrowsePage() {
       .filter((line): line is CartLine => line !== null);
 
     if (lines.length === 0) return;
-    navigate('/patient/order', { state: { franchiseId: franchiseId.trim(), lines } });
+    navigate('/patient/order', { state: { franchiseId: franchise.id, lines } });
   }
 
   const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
+  if (isLoadingFranchise || isLoading) {
+    return (
+      <AppLayout>
+        <p>Loading…</p>
+      </AppLayout>
+    );
+  }
+
+  if (franchiseError || error) {
+    return (
+      <AppLayout>
+        <p style={{ color: '#c0392b' }}>{franchiseError ?? error}</p>
+      </AppLayout>
+    );
+  }
+
+  if (!franchise) {
+    return (
+      <AppLayout>
+        <p style={{ color: '#666' }}>No shop is available yet — check back later.</p>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
-      <h2 style={{ marginTop: 0 }}>Browse a shop</h2>
-
-      <form onSubmit={handleBrowse} style={styles.form}>
-        <label style={styles.label}>
-          Franchise ID
-          <input
-            value={franchiseId}
-            onChange={(e) => setFranchiseId(e.target.value)}
-            placeholder="Shared by the shop"
-            style={styles.input}
-          />
-        </label>
-        <button type="submit" disabled={isLoading || !franchiseId.trim()}>
-          {isLoading ? 'Loading…' : 'Browse'}
-        </button>
-      </form>
-
-      {error && <p style={{ color: '#c0392b' }}>{error}</p>}
+      <h2 style={{ marginTop: 0 }}>Order medicine — {franchise.name}</h2>
 
       {products && (
         <>
-          <h3>Products</h3>
           {products.length === 0 ? (
             <p style={{ color: '#666' }}>This shop has no products listed.</p>
           ) : (
@@ -136,18 +134,6 @@ export function BrowsePage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  form: {
-    display: 'flex',
-    gap: '1rem',
-    alignItems: 'flex-end',
-    marginBottom: '1.5rem',
-  },
-  label: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-    fontSize: '0.9rem',
-  },
   input: {
     padding: '0.5rem',
     border: '1px solid #ccc',

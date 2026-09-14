@@ -1,5 +1,14 @@
 import { apiClient } from './client';
-import type { Bill, LabPaymentMode, LabTest, LabTestBooking, LabTestCombo, Product } from './franchiseApi';
+import type { Bill, FranchiseProfile, LabPaymentMode, LabTest, LabTestBooking, LabTestCombo, Product } from './franchiseApi';
+
+/**
+ * Only one shop exists today, so the patient app never asks for a
+ * franchise ID — it just uses the first (only) active franchise here.
+ */
+export async function listFranchises(): Promise<FranchiseProfile[]> {
+  const response = await apiClient.get('/api/patient/franchises');
+  return response.data.data as FranchiseProfile[];
+}
 
 export async function browseFranchiseProducts(franchiseId: string): Promise<Product[]> {
   const response = await apiClient.get(`/api/patient/franchises/${franchiseId}/products`);

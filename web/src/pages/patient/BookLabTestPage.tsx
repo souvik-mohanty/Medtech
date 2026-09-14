@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { errorMessage } from '../../api/client';
 import { bookLabTest, browseFranchiseLabTestCombos, browseFranchiseLabTests } from '../../api/patientApi';
 import type { LabPaymentMode, LabTest, LabTestBooking, LabTestCombo } from '../../api/franchiseApi';
+import { useActiveFranchise } from './useActiveFranchise';
 
 type Selected = { kind: 'test' | 'combo'; id: string; name: string; price: number } | null;
 
 export function BookLabTestPage() {
-  const [franchiseId, setFranchiseId] = useState('');
+  const { franchise, isLoading: isLoadingFranchise, error: franchiseError } = useActiveFranchise();
+
   const [tests, setTests] = useState<LabTest[] | null>(null);
   const [combos, setCombos] = useState<LabTestCombo[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,38 +23,28 @@ export function BookLabTestPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [confirmed, setConfirmed] = useState<LabTestBooking | null>(null);
 
-  async function handleBrowse(e: FormEvent) {
-    e.preventDefault();
-    if (!franchiseId.trim()) return;
-
+  useEffect(() => {
+    if (!franchise) return;
     setIsLoading(true);
     setError(null);
-    setSelected(null);
-    try {
-      const [testList, comboList] = await Promise.all([
-        browseFranchiseLabTests(franchiseId.trim()),
-        browseFranchiseLabTestCombos(franchiseId.trim()),
-      ]);
-      setTests(testList);
-      setCombos(comboList);
-    } catch (err) {
-      setError(errorMessage(err));
-      setTests(null);
-      setCombos(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    Promise.all([browseFranchiseLabTests(franchise.id), browseFranchiseLabTestCombos(franchise.id)])
+      .then(([testList, comboList]) => {
+        setTests(testList);
+        setCombos(comboList);
+      })
+      .catch((err) => setError(errorMessage(err)))
+      .finally(() => setIsLoading(false));
+  }, [franchise]);
 
   async function handleBook(e: FormEvent) {
     e.preventDefault();
-    if (!selected || !address.trim() || !mobileNumber.trim()) return;
+    if (!franchise || !selected || !address.trim() || !mobileNumber.trim()) return;
 
     setIsBooking(true);
     setError(null);
     try {
       const booking = await bookLabTest({
-        franchiseId: franchiseId.trim(),
+        franchiseId: franchise.id,
         labTestId: selected.kind === 'test' ? selected.id : undefined,
         comboId: selected.kind === 'combo' ? selected.id : undefined,
         address: address.trim(),
@@ -82,24 +74,33 @@ export function BookLabTestPage() {
     );
   }
 
+  if (isLoadingFranchise || isLoading) {
+    return (
+      <AppLayout>
+        <p>Loading…</p>
+      </AppLayout>
+    );
+  }
+
+  if (franchiseError) {
+    return (
+      <AppLayout>
+        <p style={{ color: '#c0392b' }}>{franchiseError}</p>
+      </AppLayout>
+    );
+  }
+
+  if (!franchise) {
+    return (
+      <AppLayout>
+        <p style={{ color: '#666' }}>No shop is available yet — check back later.</p>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
-      <h2 style={{ marginTop: 0 }}>Book a lab test</h2>
-
-      <form onSubmit={handleBrowse} style={styles.searchForm}>
-        <label style={styles.label}>
-          Franchise ID
-          <input
-            value={franchiseId}
-            onChange={(e) => setFranchiseId(e.target.value)}
-            placeholder="Shared by the shop"
-            style={styles.input}
-          />
-        </label>
-        <button type="submit" disabled={isLoading || !franchiseId.trim()}>
-          {isLoading ? 'Loading…' : 'Browse'}
-        </button>
-      </form>
+      <h2 style={{ marginTop: 0 }}>Book a lab test — {franchise.name}</h2>
 
       {error && <p style={{ color: '#c0392b' }}>{error}</p>}
 
@@ -147,6 +148,10 @@ export function BookLabTestPage() {
             </ul>
           )}
 
+          {tests.length === 0 && combos.length === 0 && (
+            <p style={{ color: '#666' }}>This shop hasn't listed any lab tests yet.</p>
+          )}
+
           {selected && (
             <form onSubmit={handleBook} style={styles.form}>
               <h3 style={{ marginTop: 0 }}>
@@ -183,12 +188,6 @@ export function BookLabTestPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  searchForm: {
-    display: 'flex',
-    gap: '1rem',
-    alignItems: 'flex-end',
-    marginBottom: '1.5rem',
-  },
   form: {
     border: '1px solid #e5e5e5',
     borderRadius: 8,
