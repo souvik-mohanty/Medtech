@@ -16,11 +16,16 @@ interface CartLine {
   productId: string;
   name: string;
   sellingPrice: number;
+  gstPercentage: number;
   stockQuantity: number;
   quantity: number;
 }
 
 const MAX_SEARCH_RESULTS = 8;
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
 
 export function BillingPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,6 +75,7 @@ export function BillingPage() {
         productId: product.id,
         name: product.name,
         sellingPrice: product.sellingPrice,
+        gstPercentage: product.gstPercentage,
         stockQuantity: product.stockQuantity,
         quantity: 1,
       },
@@ -85,7 +91,24 @@ export function BillingPage() {
     setCart((prev) => prev.filter((line) => line.productId !== productId));
   }
 
-  const cartTotal = cart.reduce((sum, line) => sum + line.sellingPrice * line.quantity, 0);
+  // Mirrors BillingService's totals math (per-line GST rounded to 2dp, then
+  // the discount resolved off subtotal+GST) so what the owner sees here
+  // matches what the created bill actually charges.
+  const subtotal = cart.reduce((sum, line) => sum + line.sellingPrice * line.quantity, 0);
+  const gstAmount = cart.reduce(
+    (sum, line) => sum + round2((line.sellingPrice * line.quantity * line.gstPercentage) / 100),
+    0,
+  );
+  const preDiscountTotal = subtotal + gstAmount;
+  const parsedDiscountValue = discountValue ? Number(discountValue) : 0;
+  const rawDiscountAmount =
+    parsedDiscountValue > 0
+      ? discountType === 'PERCENTAGE'
+        ? round2((preDiscountTotal * parsedDiscountValue) / 100)
+        : parsedDiscountValue
+      : 0;
+  const discountAmount = Math.min(rawDiscountAmount, preDiscountTotal);
+  const finalTotal = preDiscountTotal - discountAmount;
 
   async function handleCreateBill(e: FormEvent) {
     e.preventDefault();
@@ -203,7 +226,13 @@ export function BillingPage() {
                       style={{ ...styles.input, width: 70 }}
                     />
                   </td>
-                  <td style={styles.td}>₹{(line.sellingPrice * line.quantity).toFixed(2)}</td>
+                  <td style={styles.td}>
+                    ₹
+                    {(
+                      line.sellingPrice * line.quantity +
+                      round2((line.sellingPrice * line.quantity * line.gstPercentage) / 100)
+                    ).toFixed(2)}
+                  </td>
                   <td style={styles.td}>
                     <button type="button" onClick={() => removeFromCart(line.productId)}>
                       Remove
@@ -211,12 +240,31 @@ export function BillingPage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        )}
+
+        {cart.length > 0 && (
+          <table style={styles.totalsTable}>
+            <tbody>
               <tr>
-                <td style={styles.td} colSpan={3}>
-                  <strong>Cart total</strong>
-                </td>
-                <td style={styles.td} colSpan={2}>
-                  <strong>₹{cartTotal.toFixed(2)}</strong>
+                <td style={styles.totalsLabel}>Subtotal</td>
+                <td style={styles.totalsValue}>₹{subtotal.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style={styles.totalsLabel}>GST</td>
+                <td style={styles.totalsValue}>₹{gstAmount.toFixed(2)}</td>
+              </tr>
+              {discountAmount > 0 && (
+                <tr>
+                  <td style={styles.totalsLabel}>Discount</td>
+                  <td style={styles.totalsValue}>-₹{discountAmount.toFixed(2)}</td>
+                </tr>
+              )}
+              <tr>
+                <td style={{ ...styles.totalsLabel, fontWeight: 700, fontSize: '1.05rem' }}>Total</td>
+                <td style={{ ...styles.totalsValue, fontWeight: 700, fontSize: '1.05rem' }}>
+                  ₹{finalTotal.toFixed(2)}
                 </td>
               </tr>
             </tbody>
@@ -369,6 +417,18 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     maxWidth: 800,
     marginBottom: '1rem',
+  },
+  totalsTable: {
+    width: 260,
+    marginLeft: 'auto',
+    marginBottom: '1rem',
+  },
+  totalsLabel: {
+    padding: '0.2rem 0',
+  },
+  totalsValue: {
+    padding: '0.2rem 0',
+    textAlign: 'right',
   },
   th: {
     textAlign: 'left',
