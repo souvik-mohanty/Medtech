@@ -60,6 +60,7 @@ export interface Product {
   sellingPrice: number;
   purchasePrice: number | null;
   mfgDate: string | null;
+  purchaseDate: string | null;
   expiryDate: string | null;
   stockQuantity: number;
   gstPercentage: number;
@@ -71,6 +72,7 @@ export interface ProductRequest {
   sellingPrice: number;
   purchasePrice?: number;
   mfgDate?: string;
+  purchaseDate?: string;
   expiryDate?: string;
   stockQuantity: number;
   gstPercentage?: number;
@@ -131,17 +133,24 @@ export interface Bill {
   items: BillItem[];
   subtotal: number;
   gstAmount: number;
+  discountAmount: number;
   totalAmount: number;
   paymentMode: 'CASH' | 'ONLINE' | 'OFFLINE';
   status: string;
   invoiceNumber: string | null;
+  note: string | null;
   createdAt: string;
 }
+
+export type DiscountType = 'FLAT' | 'PERCENTAGE';
 
 export interface CounterBillRequest {
   items: { productId: string; quantity: number }[];
   customerName?: string;
   customerPhone?: string;
+  discountType?: DiscountType;
+  discountValue?: number;
+  note?: string;
 }
 
 export async function onboard(request: OnboardRequest): Promise<OnboardResponse> {

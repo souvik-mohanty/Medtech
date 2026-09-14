@@ -4,6 +4,8 @@ import { AppLayout } from '../../components/AppLayout';
 import { errorMessage } from '../../api/client';
 import { createProduct, listProducts, type Product } from '../../api/franchiseApi';
 
+const today = new Date().toISOString().slice(0, 10);
+
 export function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +16,9 @@ export function InventoryPage() {
   const [sellingPrice, setSellingPrice] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [mfgDate, setMfgDate] = useState('');
+  // Defaults to today — the shop owner is usually logging a purchase that
+  // just happened, but can change it for backdated stock entry.
+  const [purchaseDate, setPurchaseDate] = useState(today);
   const [expiryDate, setExpiryDate] = useState('');
   const [stockQuantity, setStockQuantity] = useState('');
   const [gstPercentage, setGstPercentage] = useState('');
@@ -48,6 +53,7 @@ export function InventoryPage() {
         sellingPrice: Number(sellingPrice),
         purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
         mfgDate: mfgDate || undefined,
+        purchaseDate: purchaseDate || undefined,
         expiryDate: expiryDate || undefined,
         stockQuantity: Number(stockQuantity),
         gstPercentage: gstPercentage ? Number(gstPercentage) : undefined,
@@ -57,6 +63,7 @@ export function InventoryPage() {
       setSellingPrice('');
       setPurchasePrice('');
       setMfgDate('');
+      setPurchaseDate(today);
       setExpiryDate('');
       setStockQuantity('');
       setGstPercentage('');
@@ -67,8 +74,6 @@ export function InventoryPage() {
       setIsSaving(false);
     }
   }
-
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <AppLayout>
@@ -136,6 +141,16 @@ export function InventoryPage() {
         </div>
         <div style={styles.fieldRow}>
           <label style={styles.label}>
+            Purchase date
+            <input
+              type="date"
+              value={purchaseDate}
+              onChange={(e) => setPurchaseDate(e.target.value)}
+              max={today}
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
             Mfg. date
             <input
               type="date"
@@ -175,6 +190,7 @@ export function InventoryPage() {
               <th style={styles.th}>Purchase Price</th>
               <th style={styles.th}>Stock</th>
               <th style={styles.th}>GST %</th>
+              <th style={styles.th}>Purchase Date</th>
               <th style={styles.th}>Mfg. Date</th>
               <th style={styles.th}>Expiry Date</th>
             </tr>
@@ -190,6 +206,7 @@ export function InventoryPage() {
                   <td style={styles.td}>{p.purchasePrice != null ? `₹${p.purchasePrice.toFixed(2)}` : '—'}</td>
                   <td style={styles.td}>{p.stockQuantity}</td>
                   <td style={styles.td}>{p.gstPercentage.toFixed(2)}</td>
+                  <td style={styles.td}>{p.purchaseDate ?? '—'}</td>
                   <td style={styles.td}>{p.mfgDate ?? '—'}</td>
                   <td style={{ ...styles.td, color: isExpired ? '#c0392b' : undefined, fontWeight: isExpired ? 600 : undefined }}>
                     {p.expiryDate ?? '—'}

@@ -17,10 +17,12 @@ export function LabTestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showAddTest, setShowAddTest] = useState(false);
   const [testName, setTestName] = useState('');
   const [testPrice, setTestPrice] = useState('');
   const [isSavingTest, setIsSavingTest] = useState(false);
 
+  const [showAddCombo, setShowAddCombo] = useState(false);
   const [comboName, setComboName] = useState('');
   const [comboPrice, setComboPrice] = useState('');
   const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
@@ -54,6 +56,7 @@ export function LabTestsPage() {
       await createLabTest({ name: testName.trim(), price: Number(testPrice) });
       setTestName('');
       setTestPrice('');
+      setShowAddTest(false);
       await load();
     } catch (err) {
       setError(errorMessage(err));
@@ -83,6 +86,7 @@ export function LabTestsPage() {
       setComboName('');
       setComboPrice('');
       setSelectedTestIds([]);
+      setShowAddCombo(false);
       await load();
     } catch (err) {
       setError(errorMessage(err));
@@ -101,34 +105,46 @@ export function LabTestsPage() {
 
       {error && <p style={{ color: '#c0392b' }}>{error}</p>}
 
-      <form onSubmit={handleAddTest} style={styles.form}>
-        <h3 style={{ marginTop: 0 }}>Add a test</h3>
-        <div style={styles.fieldRow}>
-          <label style={styles.label}>
-            Test name
-            <input
-              value={testName}
-              onChange={(e) => setTestName(e.target.value)}
-              placeholder="e.g. Complete Blood Count"
-              style={styles.input}
-            />
-          </label>
-          <label style={styles.label}>
-            Price (₹)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={testPrice}
-              onChange={(e) => setTestPrice(e.target.value)}
-              style={styles.input}
-            />
-          </label>
-        </div>
-        <button type="submit" disabled={isSavingTest || !testName.trim() || !testPrice}>
-          {isSavingTest ? 'Adding…' : 'Add test'}
+      {!showAddTest ? (
+        <button type="button" onClick={() => setShowAddTest(true)} style={{ marginBottom: '1.5rem' }}>
+          + Add Test
         </button>
-      </form>
+      ) : (
+        <form onSubmit={handleAddTest} style={styles.form}>
+          <h3 style={{ marginTop: 0 }}>Add a test</h3>
+          <div style={styles.fieldRow}>
+            <label style={styles.label}>
+              Test name
+              <input
+                value={testName}
+                onChange={(e) => setTestName(e.target.value)}
+                placeholder="e.g. Complete Blood Count"
+                style={styles.input}
+                autoFocus
+              />
+            </label>
+            <label style={styles.label}>
+              Price (₹)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={testPrice}
+                onChange={(e) => setTestPrice(e.target.value)}
+                style={styles.input}
+              />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="submit" disabled={isSavingTest || !testName.trim() || !testPrice}>
+              {isSavingTest ? 'Adding…' : 'Add test'}
+            </button>
+            <button type="button" onClick={() => setShowAddTest(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       <h3>Tests</h3>
       {isLoading ? (
@@ -154,56 +170,74 @@ export function LabTestsPage() {
         </table>
       )}
 
-      <form onSubmit={handleAddCombo} style={{ ...styles.form, marginTop: '2rem' }}>
-        <h3 style={{ marginTop: 0 }}>Add a combo package</h3>
-        {tests.length === 0 ? (
-          <p style={{ color: '#666' }}>Add at least one test above before creating a combo.</p>
-        ) : (
-          <>
-            <div style={styles.fieldRow}>
-              <label style={styles.label}>
-                Combo name
+      {!showAddCombo ? (
+        <button
+          type="button"
+          onClick={() => setShowAddCombo(true)}
+          disabled={tests.length === 0}
+          title={tests.length === 0 ? 'Add at least one test first' : undefined}
+          style={{ marginBottom: '1.5rem' }}
+        >
+          + Add Combo
+        </button>
+      ) : (
+        <form onSubmit={handleAddCombo} style={styles.form}>
+          <h3 style={{ marginTop: 0 }}>Add a combo package</h3>
+          <div style={styles.fieldRow}>
+            <label style={styles.label}>
+              Combo name
+              <input
+                value={comboName}
+                onChange={(e) => setComboName(e.target.value)}
+                placeholder="e.g. Basic Health Checkup"
+                style={styles.input}
+                autoFocus
+              />
+            </label>
+            <label style={styles.label}>
+              Combo price (₹)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={comboPrice}
+                onChange={(e) => setComboPrice(e.target.value)}
+                style={styles.input}
+              />
+            </label>
+          </div>
+          <fieldset style={styles.fieldset}>
+            <legend>Included tests</legend>
+            {tests.map((t) => (
+              <label key={t.id} style={styles.checkboxLabel}>
                 <input
-                  value={comboName}
-                  onChange={(e) => setComboName(e.target.value)}
-                  placeholder="e.g. Basic Health Checkup"
-                  style={styles.input}
+                  type="checkbox"
+                  checked={selectedTestIds.includes(t.id)}
+                  onChange={() => toggleTestSelection(t.id)}
                 />
+                {t.name} (₹{t.price.toFixed(2)})
               </label>
-              <label style={styles.label}>
-                Combo price (₹)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={comboPrice}
-                  onChange={(e) => setComboPrice(e.target.value)}
-                  style={styles.input}
-                />
-              </label>
-            </div>
-            <fieldset style={styles.fieldset}>
-              <legend>Included tests</legend>
-              {tests.map((t) => (
-                <label key={t.id} style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTestIds.includes(t.id)}
-                    onChange={() => toggleTestSelection(t.id)}
-                  />
-                  {t.name} (₹{t.price.toFixed(2)})
-                </label>
-              ))}
-            </fieldset>
+            ))}
+          </fieldset>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               type="submit"
               disabled={isSavingCombo || !comboName.trim() || !comboPrice || selectedTestIds.length === 0}
             >
               {isSavingCombo ? 'Adding…' : 'Add combo'}
             </button>
-          </>
-        )}
-      </form>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddCombo(false);
+                setSelectedTestIds([]);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       <h3>Combo packages</h3>
       {combos.length === 0 ? (
