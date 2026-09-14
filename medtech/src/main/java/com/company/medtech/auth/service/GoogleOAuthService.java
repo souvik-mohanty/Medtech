@@ -55,8 +55,28 @@ public class GoogleOAuthService {
             throw new BusinessException("User is inactive");
         }
 
+        // Refreshed on every login (not just at first provisioning) so a
+        // directly-provisioned FRANCHISE row — which starts with no name at
+        // all — picks up the real Google profile name automatically.
+        String name = (String) payload.get("name");
+        String picture = (String) payload.get("picture");
+        if (name != null) {
+            user.setFullName(name);
+        }
+        if (picture != null) {
+            user.setPictureUrl(picture);
+        }
+        user = userRepo.save(user);
+
         String token = jwtService.generateToken(user.getEmail(), user.getRole());
-        return new AuthResponse(token, user.getRole());
+        return new AuthResponse(
+                token,
+                user.getRole(),
+                user.getId().toString(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPictureUrl()
+        );
     }
 
     private UserAuth registerPatient(String email) {

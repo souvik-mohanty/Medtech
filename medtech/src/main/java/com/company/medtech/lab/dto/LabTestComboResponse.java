@@ -13,6 +13,11 @@ public class LabTestComboResponse {
     private String id;
     private String name;
     private BigDecimal comboPrice;
+    /** Derived — sum of the constituent tests' current prices, computed at read time. */
+    private BigDecimal totalPrice;
     private boolean active;
     private List<LabTestResponse> tests;
+    private String description;
+    private String preparationInstructions;
+    private int reportTurnaroundHours;
 }

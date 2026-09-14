@@ -1,15 +1,22 @@
 package com.company.medtech.franchise.model;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -58,6 +65,20 @@ public class Franchise {
     /** Atomically incremented per invoice generated — see BillingService#nextInvoiceNumber. */
     @Column(name = "invoice_sequence", nullable = false)
     private long invoiceSequence = 0;
+
+    /** Charged for HOME_COLLECTION bookings — see LabTestBookingService#bookTest. Owner-configurable, replaces the old hardcoded 99. */
+    @Column(name = "collection_charge", nullable = false)
+    private BigDecimal collectionCharge = new BigDecimal("99");
+
+    /** Subtotal at/above which the collection charge is waived. Null = no threshold, always charge (today's default behavior). */
+    @Column(name = "free_collection_min_order")
+    private BigDecimal freeCollectionMinOrder;
+
+    /** Empty = no restriction configured yet, so every pincode is servable — see FranchiseService#assertPincodeServiceable. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "franchise_pincode", joinColumns = @JoinColumn(name = "franchise_id"))
+    @Column(name = "pincode", nullable = false)
+    private Set<String> serviceablePincodes = new HashSet<>();
 
     @Embedded
     private PaymentGatewayConfig paymentGateway = new PaymentGatewayConfig();
@@ -176,6 +197,30 @@ public class Franchise {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public BigDecimal getCollectionCharge() {
+        return collectionCharge;
+    }
+
+    public void setCollectionCharge(BigDecimal collectionCharge) {
+        this.collectionCharge = collectionCharge;
+    }
+
+    public BigDecimal getFreeCollectionMinOrder() {
+        return freeCollectionMinOrder;
+    }
+
+    public void setFreeCollectionMinOrder(BigDecimal freeCollectionMinOrder) {
+        this.freeCollectionMinOrder = freeCollectionMinOrder;
+    }
+
+    public Set<String> getServiceablePincodes() {
+        return serviceablePincodes;
+    }
+
+    public void setServiceablePincodes(Set<String> serviceablePincodes) {
+        this.serviceablePincodes = serviceablePincodes;
     }
 
     public PaymentGatewayConfig getPaymentGateway() {

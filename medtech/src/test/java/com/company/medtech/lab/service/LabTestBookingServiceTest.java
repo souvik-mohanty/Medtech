@@ -1,7 +1,9 @@
 package com.company.medtech.lab.service;
 
-import com.company.medtech.billing.model.PaymentMode;
-import com.company.medtech.common.enums.OrderStatus;
+import com.company.medtech.auth.model.UserAuth;
+import com.company.medtech.auth.repository.UserAuthRepository;
+import com.company.medtech.common.constants.AppConstants;
+import com.company.medtech.common.enums.PaymentStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.model.PaymentGatewayConfig;
@@ -11,12 +13,22 @@ import com.company.medtech.lab.dto.LabTestBookingRequest;
 import com.company.medtech.lab.dto.LabTestBookingResponse;
 import com.company.medtech.lab.dto.LabTestRequest;
 import com.company.medtech.lab.dto.LabTestResponse;
+import com.company.medtech.lab.model.BookingStatus;
+import com.company.medtech.lab.model.CollectionMethod;
+import com.company.medtech.lab.model.CollectionStatus;
+import com.company.medtech.lab.model.TestCategory;
+import com.company.medtech.patient.model.PatientAddress;
+import com.company.medtech.patient.model.PatientProfile;
+import com.company.medtech.patient.repository.PatientAddressRepository;
+import com.company.medtech.patient.repository.PatientProfileRepository;
+import com.company.medtech.payment.model.PaymentMethod;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,36 +47,61 @@ class LabTestBookingServiceTest {
     @Autowired
     private FranchiseRepository franchiseRepository;
 
+    @Autowired
+    private UserAuthRepository userAuthRepository;
+
+    @Autowired
+    private PatientProfileRepository patientProfileRepository;
+
+    @Autowired
+    private PatientAddressRepository patientAddressRepository;
+
     private Franchise franchise;
     private LabTestResponse test;
+    private PatientProfile patientProfile;
+    private String patientEmail;
 
     @BeforeEach
     void setUp() {
         franchise = franchiseRepository.save(newFranchise());
         test = labTestService.createTest(franchise.getOwnerEmail(), testRequest("CBC", "300.00"));
+
+        patientEmail = "patient-" + UUID.randomUUID() + "@example.com";
+        UserAuth patientUser = new UserAuth();
+        patientUser.setEmail(patientEmail);
+        patientUser.setRole(AppConstants.ROLE_PATIENT);
+        patientUser.setActive(true);
+        patientUser.setFullName("Test Patient");
+        patientUser = userAuthRepository.save(patientUser);
+
+        PatientProfile profile = new PatientProfile();
+        profile.setUserId(patientUser.getId());
+        profile.setPhone("9876543210");
+        patientProfile = patientProfileRepository.save(profile);
     }
 
     @Test
     void cashBookingStartsPaymentPending() {
-        LabTestBookingResponse response = labTestBookingService.bookTest("patient@example.com", bookingRequest(test.getId(), null, PaymentMode.CASH));
+        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
 
-        assertThat(response.getStatus()).isEqualTo(OrderStatus.PAYMENT_PENDING);
-        assertThat(response.getPaymentMode()).isEqualTo(PaymentMode.CASH);
-        assertThat(response.getItemName()).isEqualTo("CBC");
-        assertThat(response.getAddress()).isEqualTo("221B Baker Street");
-        assertThat(response.getMobileNumber()).isEqualTo("9999999999");
+        assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(response.getStatus()).isEqualTo(BookingStatus.SAMPLE_COLLECTION_SCHEDULED);
+        assertThat(response.getCollectionStatus()).isEqualTo(CollectionStatus.SCHEDULED);
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getTestName()).isEqualTo("CBC");
+        assertThat(response.getTotalAmount()).isNotNull();
     }
 
     @Test
     void onlineBookingRejectedWithoutActiveGateway() {
         assertThatThrownBy(() ->
-                labTestBookingService.bookTest("patient@example.com", bookingRequest(test.getId(), null, PaymentMode.ONLINE)))
+                labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("online payments");
     }
 
     @Test
-    void onlineBookingAllowedWithActiveGateway() {
+    void onlineBookingSucceedsInstantlyWithActiveGateway() {
         PaymentGatewayConfig config = new PaymentGatewayConfig();
         config.setProvider(PaymentProvider.RAZORPAY);
         config.setApiKey("rzp_live_abc123");
@@ -73,54 +110,105 @@ class LabTestBookingServiceTest {
         franchise.setPaymentGateway(config);
         franchiseRepository.save(franchise);
 
-        LabTestBookingResponse response = labTestBookingService.bookTest("patient@example.com", bookingRequest(test.getId(), null, PaymentMode.ONLINE));
+        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI));
 
-        assertThat(response.getPaymentMode()).isEqualTo(PaymentMode.ONLINE);
+        assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
     }
 
     @Test
-    void rejectsBookingBothATestAndACombo() {
-        LabTestBookingRequest request = bookingRequest(test.getId(), UUID.randomUUID().toString(), PaymentMode.CASH);
+    void rejectsBookingBothTestsAndAPackage() {
+        LabTestBookingRequest request = bookingRequest(List.of(test.getId()), UUID.randomUUID().toString(), PaymentMethod.CASH);
 
-        assertThatThrownBy(() -> labTestBookingService.bookTest("patient@example.com", request))
+        assertThatThrownBy(() -> labTestBookingService.bookTest(patientEmail, request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("exactly one");
+                .hasMessageContaining("either");
     }
 
     @Test
-    void rejectsBookingNeitherATestNorACombo() {
-        LabTestBookingRequest request = bookingRequest(null, null, PaymentMode.CASH);
+    void rejectsBookingNeitherTestsNorAPackage() {
+        LabTestBookingRequest request = bookingRequest(null, null, PaymentMethod.CASH);
 
-        assertThatThrownBy(() -> labTestBookingService.bookTest("patient@example.com", request))
+        assertThatThrownBy(() -> labTestBookingService.bookTest(patientEmail, request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("exactly one");
+                .hasMessageContaining("either");
+    }
+
+    @Test
+    void homeCollectionRequiresAnAddress() {
+        LabTestBookingRequest request = bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH);
+        request.setCollectionMethod(CollectionMethod.HOME_COLLECTION);
+        request.setAddressId(null);
+
+        assertThatThrownBy(() -> labTestBookingService.bookTest(patientEmail, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("address");
+    }
+
+    @Test
+    void homeCollectionAddsTheCollectionChargeAndResolvesTheAddress() {
+        PatientAddress address = new PatientAddress();
+        address.setPatientProfileId(patientProfile.getId());
+        address.setLabel("Home");
+        address.setLine1("221B Baker Street");
+        address.setCity("Bhubaneswar");
+        address.setState("Odisha");
+        address.setPincode("751001");
+        address = patientAddressRepository.save(address);
+
+        LabTestBookingRequest request = bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH);
+        request.setCollectionMethod(CollectionMethod.HOME_COLLECTION);
+        request.setAddressId(address.getId().toString());
+
+        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, request);
+
+        assertThat(response.getAddressLabel()).isEqualTo("Home");
+        assertThat(response.getCollectionCharge()).isEqualByComparingTo("99");
+        assertThat(response.getTotalAmount()).isGreaterThan(response.getSubtotal());
     }
 
     @Test
     void ownerCanMarkACashBookingPaid() {
-        LabTestBookingResponse booked = labTestBookingService.bookTest("patient@example.com", bookingRequest(test.getId(), null, PaymentMode.CASH));
+        LabTestBookingResponse booked = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
 
         LabTestBookingResponse paid = labTestBookingService.markPaid(franchise.getOwnerEmail(), booked.getId());
 
-        assertThat(paid.getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(paid.getPaymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(paid.getPaidAt()).isNotNull();
     }
 
     @Test
+    void ownerCanAdvanceCollectionStatus() {
+        LabTestBookingResponse booked = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
+
+        LabTestBookingResponse updated = labTestBookingService.updateCollectionStatus(franchise.getOwnerEmail(), booked.getId(), CollectionStatus.COMPLETED);
+
+        assertThat(updated.getCollectionStatus()).isEqualTo(CollectionStatus.COMPLETED);
+        assertThat(updated.getStatus()).isEqualTo(BookingStatus.REPORT_READY);
+    }
+
+    @Test
     void ownerSeesTheirFranchisesBookings() {
-        labTestBookingService.bookTest("patient@example.com", bookingRequest(test.getId(), null, PaymentMode.CASH));
+        labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
 
         assertThat(labTestBookingService.listForOwner(franchise.getOwnerEmail())).hasSize(1);
     }
 
-    private LabTestBookingRequest bookingRequest(String testId, String comboId, PaymentMode paymentMode) {
+    @Test
+    void patientSeesTheirOwnBookings() {
+        labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
+
+        assertThat(labTestBookingService.listForPatient(patientEmail)).hasSize(1);
+    }
+
+    private LabTestBookingRequest bookingRequest(List<String> testIds, String packageId, PaymentMethod paymentMethod) {
         LabTestBookingRequest request = new LabTestBookingRequest();
         request.setFranchiseId(franchise.getId().toString());
-        request.setLabTestId(testId);
-        request.setComboId(comboId);
-        request.setAddress("221B Baker Street");
-        request.setMobileNumber("9999999999");
-        request.setPaymentMode(paymentMode);
+        request.setTestIds(testIds);
+        request.setPackageId(packageId);
+        request.setCollectionMethod(CollectionMethod.LAB_VISIT);
+        request.setCollectionDate(java.time.LocalDate.now().plusDays(1));
+        request.setCollectionSlot("08:00 AM – 10:00 AM");
+        request.setPaymentMethod(paymentMethod);
         return request;
     }
 
@@ -128,6 +216,8 @@ class LabTestBookingServiceTest {
         LabTestRequest request = new LabTestRequest();
         request.setName(name);
         request.setPrice(new java.math.BigDecimal(price));
+        request.setCategory(TestCategory.BLOOD);
+        request.setReportTurnaroundHours(24);
         return request;
     }
 

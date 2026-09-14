@@ -7,7 +7,9 @@ import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class FranchiseService {
@@ -69,6 +71,18 @@ public class FranchiseService {
         if (request.getInvoicePrefix() != null && !request.getInvoicePrefix().isBlank()) {
             franchise.setInvoicePrefix(request.getInvoicePrefix().trim().toUpperCase());
         }
+        franchise.setCollectionCharge(request.getCollectionCharge());
+        franchise.setFreeCollectionMinOrder(request.getFreeCollectionMinOrder());
+
+        if (request.getServiceablePincodes() != null) {
+            Set<String> normalized = new HashSet<>();
+            for (String pincode : request.getServiceablePincodes()) {
+                if (pincode != null && !pincode.isBlank()) {
+                    normalized.add(pincode.trim());
+                }
+            }
+            franchise.setServiceablePincodes(normalized);
+        }
 
         return toResponse(franchiseRepository.save(franchise));
     }
@@ -84,7 +98,34 @@ public class FranchiseService {
                 franchise.getAccentColorHex(),
                 franchise.getInvoiceFont(),
                 franchise.getInvoiceFooterNote(),
-                franchise.getInvoicePrefix()
+                franchise.getInvoicePrefix(),
+                franchise.getCollectionCharge(),
+                franchise.getFreeCollectionMinOrder(),
+                franchise.getServiceablePincodes().stream().sorted().toList()
         );
+    }
+
+    /**
+     * Used at address-creation time (PatientProfileService#addAddress) and
+     * for walk-in home-collection bookings. Only one franchise exists today
+     * (see class-level convention elsewhere in this codebase), so this
+     * resolves "the" active franchise the same way listActive()'s callers
+     * do. An unconfigured pincode set (nothing added yet in Settings) means
+     * no restriction — every pincode passes — so this feature can't
+     * silently block bookings before an owner has set it up.
+     */
+    public void assertPincodeServiceable(String pincode) {
+        List<Franchise> active = franchiseRepository.findByActiveTrue();
+        if (active.isEmpty()) {
+            return;
+        }
+        Franchise franchise = active.get(0);
+        Set<String> configured = franchise.getServiceablePincodes();
+        if (configured.isEmpty()) {
+            return;
+        }
+        if (pincode == null || !configured.contains(pincode.trim())) {
+            throw new BusinessException("Sorry, we don't currently serve pincode " + pincode + ".");
+        }
     }
 }

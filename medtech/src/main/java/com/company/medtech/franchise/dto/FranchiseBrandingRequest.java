@@ -1,9 +1,14 @@
 package com.company.medtech.franchise.dto;
 
 import com.company.medtech.franchise.model.InvoiceFont;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class FranchiseBrandingRequest {
@@ -24,4 +29,16 @@ public class FranchiseBrandingRequest {
     private InvoiceFont invoiceFont;
     private String invoiceFooterNote;
     private String invoicePrefix;
+
+    /** Charged on HOME_COLLECTION bookings below freeCollectionMinOrder (or always, if that's unset). */
+    @NotNull
+    @DecimalMin(value = "0", message = "collectionCharge cannot be negative")
+    private BigDecimal collectionCharge;
+
+    /** Subtotal at/above which the collection charge is waived. Null = no free threshold, always charge. */
+    @DecimalMin(value = "0", message = "freeCollectionMinOrder cannot be negative")
+    private BigDecimal freeCollectionMinOrder;
+
+    /** Null = leave unchanged. Replaces the whole set — see FranchiseService#updateBranding. */
+    private List<String> serviceablePincodes;
 }

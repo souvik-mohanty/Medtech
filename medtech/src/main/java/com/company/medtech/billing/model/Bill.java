@@ -10,7 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -50,8 +50,16 @@ public class Bill {
     @Column(name = "patient_email")
     private String patientEmail;
 
+    /**
+     * itemOrder is set explicitly by BillingService (see BillItem#setItemOrder),
+     * not managed automatically via @OrderColumn — that relied on Hibernate
+     * populating the index column at insert time, which doesn't reliably
+     * happen for a brand-new parent+children saved in the same flush
+     * (surfaced as a NOT NULL violation on item_order against real Postgres,
+     * even though it happened to pass under H2 in tests).
+     */
     @OneToMany(mappedBy = "bill", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderColumn(name = "item_order")
+    @OrderBy("itemOrder")
     private List<BillItem> items = new ArrayList<>();
 
     @Column(nullable = false)
@@ -88,6 +96,16 @@ public class Bill {
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
+
+    /** Only set for a counter sale that credits a referral — snapshotted at bill time, same as lab_test_booking's referral columns. */
+    @Column(name = "referral_id")
+    private UUID referralId;
+
+    @Column(name = "referral_name")
+    private String referralName;
+
+    @Column(name = "referral_commission")
+    private BigDecimal referralCommission;
 
     public UUID getId() {
         return id;
@@ -229,5 +247,29 @@ public class Bill {
 
     public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
+    }
+
+    public UUID getReferralId() {
+        return referralId;
+    }
+
+    public void setReferralId(UUID referralId) {
+        this.referralId = referralId;
+    }
+
+    public String getReferralName() {
+        return referralName;
+    }
+
+    public void setReferralName(String referralName) {
+        this.referralName = referralName;
+    }
+
+    public BigDecimal getReferralCommission() {
+        return referralCommission;
+    }
+
+    public void setReferralCommission(BigDecimal referralCommission) {
+        this.referralCommission = referralCommission;
     }
 }

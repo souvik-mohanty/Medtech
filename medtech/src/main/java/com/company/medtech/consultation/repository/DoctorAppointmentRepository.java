@@ -11,5 +11,7 @@ public interface DoctorAppointmentRepository extends JpaRepository<DoctorAppoint
 
     List<DoctorAppointment> findByFranchiseIdOrderByCreatedAtDesc(UUID franchiseId);
 
+    List<DoctorAppointment> findByPatientEmailOrderByCreatedAtDesc(String patientEmail);
+
     Optional<DoctorAppointment> findByIdAndFranchiseId(UUID id, UUID franchiseId);
 }

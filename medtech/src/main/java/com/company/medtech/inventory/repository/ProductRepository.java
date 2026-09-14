@@ -14,6 +14,9 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     List<Product> findByFranchiseIdAndActiveTrue(UUID franchiseId);
 
+    /** Owner-facing listing includes inactive products too, so a deactivated one can still be found and reactivated. */
+    List<Product> findByFranchiseIdOrderByNameAsc(UUID franchiseId);
+
     Optional<Product> findByIdAndFranchiseId(UUID id, UUID franchiseId);
 
     /**

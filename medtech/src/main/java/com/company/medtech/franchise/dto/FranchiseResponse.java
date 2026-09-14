@@ -4,6 +4,9 @@ import com.company.medtech.franchise.model.InvoiceFont;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 public class FranchiseResponse {
@@ -18,4 +21,8 @@ public class FranchiseResponse {
     private InvoiceFont invoiceFont;
     private String invoiceFooterNote;
     private String invoicePrefix;
+    private BigDecimal collectionCharge;
+    private BigDecimal freeCollectionMinOrder;
+    /** Empty = no restriction configured, every pincode is servable. */
+    private List<String> serviceablePincodes;
 }

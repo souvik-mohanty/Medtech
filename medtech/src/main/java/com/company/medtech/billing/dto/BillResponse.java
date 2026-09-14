@@ -3,6 +3,7 @@ package com.company.medtech.billing.dto;
 import com.company.medtech.billing.model.BillSource;
 import com.company.medtech.billing.model.PaymentMode;
 import com.company.medtech.common.enums.OrderStatus;
+import com.company.medtech.payment.dto.PaymentHistoryEntryResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -30,4 +31,9 @@ public class BillResponse {
     private String invoiceNumber;
     private String note;
     private LocalDateTime createdAt;
+    /** Only set for a counter sale that credits a referral. */
+    private String referralId;
+    private String referralName;
+    private BigDecimal referralCommission;
+    private List<PaymentHistoryEntryResponse> paymentHistory;
 }

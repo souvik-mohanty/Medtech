@@ -22,4 +22,10 @@ public class LabTestComboRequest {
     /** IDs of this franchise's own lab tests to bundle into the combo. */
     @NotEmpty
     private List<String> testIds;
+
+    private String description;
+    private String preparationInstructions;
+
+    @NotNull
+    private Integer reportTurnaroundHours;
 }

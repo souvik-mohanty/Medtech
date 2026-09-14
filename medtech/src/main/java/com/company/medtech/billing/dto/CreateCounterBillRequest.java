@@ -27,4 +27,7 @@ public class CreateCounterBillRequest {
 
     /** Optional free-text note printed on this invoice. */
     private String note;
+
+    /** Optional — the doctor or other person who referred this customer in. */
+    private String referralId;
 }

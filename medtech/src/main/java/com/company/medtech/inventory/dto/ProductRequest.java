@@ -39,4 +39,6 @@ public class ProductRequest {
 
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal gstPercentage;
+
+    private boolean prescriptionRequired;
 }

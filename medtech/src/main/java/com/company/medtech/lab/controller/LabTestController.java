@@ -38,6 +38,11 @@ public class LabTestController {
         return ApiResponse.success("Lab test added", labTestService.createTest(authentication.getName(), request));
     }
 
+    @PatchMapping("/{id}/toggle-active")
+    public ApiResponse<LabTestResponse> toggleTestActive(Authentication authentication, @PathVariable String id) {
+        return ApiResponse.success("Test updated", labTestService.toggleTestActive(authentication.getName(), id));
+    }
+
     @GetMapping("/combos")
     public ApiResponse<List<LabTestComboResponse>> listCombos(Authentication authentication) {
         return ApiResponse.success("OK", labTestService.listCombos(authentication.getName()));
@@ -49,5 +54,10 @@ public class LabTestController {
             @Valid @RequestBody LabTestComboRequest request
     ) {
         return ApiResponse.success("Combo added", labTestService.createCombo(authentication.getName(), request));
+    }
+
+    @PatchMapping("/combos/{id}/toggle-active")
+    public ApiResponse<LabTestComboResponse> toggleComboActive(Authentication authentication, @PathVariable String id) {
+        return ApiResponse.success("Package updated", labTestService.toggleComboActive(authentication.getName(), id));
     }
 }

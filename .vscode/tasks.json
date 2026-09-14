@@ -92,14 +92,17 @@
       }
     },
 
-    // ---------------- Web ----------------
+    // ---------------- LP Care Web ----------------
+    // lp-care-web/ is now the platform's one real frontend (web/ was
+    // retired). Being wired up to this same backend as of Stage 1 of the
+    // lpcare pivot. Pinned to :5180 in vite.config.ts (strictPort).
     {
-      "label": "Web: Vite Dev Server",
-      "detail": "web/ — unified Shop Owner + Patient app on :5173",
+      "label": "LP Care Web: Vite Dev Server",
+      "detail": "lp-care-web/ — patient + owner portal on :5180",
       "type": "shell",
       "command": "npm",
       "args": ["run", "dev"],
-      "options": { "cwd": "${workspaceFolder}/web" },
+      "options": { "cwd": "${workspaceFolder}/lp-care-web" },
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -121,30 +124,30 @@
 
     // ---------------- Aggregate ----------------
     {
-      "label": "Services: Backend + Web (parallel)",
+      "label": "Services: Backend + LP Care Web (parallel)",
       "dependsOrder": "parallel",
-      "dependsOn": ["Backend: Spring Boot", "Web: Vite Dev Server"],
+      "dependsOn": ["Backend: Spring Boot", "LP Care Web: Vite Dev Server"],
       "problemMatcher": []
     },
     {
       "label": "Run All Services",
-      "detail": "PostgreSQL, then Backend + Web together. Local Docker Postgres — use 'Run All Services (Neon)' instead to skip Docker and use the hosted database.",
+      "detail": "PostgreSQL, then Backend + LP Care Web together. Local Docker Postgres — use 'Run All Services (Neon)' instead to skip Docker and use the hosted database.",
       "dependsOrder": "sequence",
-      "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + Web (parallel)"],
+      "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + LP Care Web (parallel)"],
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": []
     },
     {
-      "label": "Services: Backend (Neon) + Web (parallel)",
+      "label": "Services: Backend (Neon) + LP Care Web (parallel)",
       "dependsOrder": "parallel",
-      "dependsOn": ["Backend: Spring Boot (Neon)", "Web: Vite Dev Server"],
+      "dependsOn": ["Backend: Spring Boot (Neon)", "LP Care Web: Vite Dev Server"],
       "problemMatcher": []
     },
     {
       "label": "Run All Services (Neon)",
-      "detail": "Backend (hosted Postgres) + Web together — no Docker/local Postgres step, since Neon needs neither.",
+      "detail": "Backend (hosted Postgres) + LP Care Web together — no Docker/local Postgres step, since Neon needs neither.",
       "dependsOrder": "sequence",
-      "dependsOn": ["Services: Backend (Neon) + Web (parallel)"],
+      "dependsOn": ["Services: Backend (Neon) + LP Care Web (parallel)"],
       "group": "build",
       "problemMatcher": []
     }

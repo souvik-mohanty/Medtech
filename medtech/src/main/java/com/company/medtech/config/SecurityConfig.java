@@ -4,6 +4,7 @@ import com.company.medtech.auth.security.JwtAuthenticationFilter;
 import com.company.medtech.common.constants.AppConstants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -42,6 +43,15 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/actuator/**"
+                        ).permitAll()
+                        // lp-care-web's public marketing site (browse tests/packages
+                        // with no login) needs read-only, anonymous access to the
+                        // catalog-browse endpoints specifically — nothing
+                        // patient-specific is exposed by any of these three.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/patient/franchises",
+                                "/api/patient/franchises/*/labtests",
+                                "/api/patient/franchises/*/labtests/combos"
                         ).permitAll()
                         .requestMatchers("/api/franchise/**").hasRole(AppConstants.ROLE_FRANCHISE)
                         .requestMatchers("/api/patient/**").hasRole(AppConstants.ROLE_PATIENT)

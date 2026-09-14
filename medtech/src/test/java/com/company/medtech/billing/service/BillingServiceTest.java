@@ -3,10 +3,14 @@ package com.company.medtech.billing.service;
 import com.company.medtech.billing.dto.BillItemRequest;
 import com.company.medtech.billing.dto.BillResponse;
 import com.company.medtech.billing.dto.CreateCounterBillRequest;
+import com.company.medtech.billing.dto.CreateOnlineOrderRequest;
 import com.company.medtech.billing.model.DiscountType;
+import com.company.medtech.billing.model.PaymentMode;
 import com.company.medtech.common.enums.OrderStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.model.Franchise;
+import com.company.medtech.franchise.model.PaymentGatewayConfig;
+import com.company.medtech.franchise.model.PaymentProvider;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.inventory.model.Product;
 import com.company.medtech.inventory.repository.ProductRepository;
@@ -169,6 +173,73 @@ class BillingServiceTest {
         BillResponse second = billingService.createCounterBill(franchise.getOwnerEmail(), request2);
 
         assertThat(first.getInvoiceNumber()).isNotEqualTo(second.getInvoiceNumber());
+    }
+
+    @Test
+    void cashOnlineOrderAlwaysSucceedsAndStaysPending() {
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.CASH);
+
+        BillResponse response = billingService.createOnlineOrder("patient@example.com", request);
+
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.PAYMENT_PENDING);
+        assertThat(response.getInvoiceNumber()).isNull();
+        // Stock is only checked, not reserved, for a pending cash order.
+        assertThat(productRepository.findById(paracetamol.getId()).orElseThrow().getStockQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    void onlineOrderRejectedWithoutActiveGateway() {
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.ONLINE);
+
+        assertThatThrownBy(() -> billingService.createOnlineOrder("patient@example.com", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("online payments");
+    }
+
+    @Test
+    void onlineOrderSucceedsInstantlyWithActiveGatewayAndDeductsStock() {
+        PaymentGatewayConfig config = new PaymentGatewayConfig();
+        config.setProvider(PaymentProvider.RAZORPAY);
+        config.setApiKey("rzp_live_abc123");
+        config.setEncryptedApiSecret("encrypted-blob");
+        config.setActive(true);
+        franchise.setPaymentGateway(config);
+        franchiseRepository.save(franchise);
+
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.ONLINE);
+
+        BillResponse response = billingService.createOnlineOrder("patient@example.com", request);
+
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(response.getInvoiceNumber()).isNotNull();
+        assertThat(productRepository.findById(paracetamol.getId()).orElseThrow().getStockQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    void ownerCanMarkACashOnlineOrderPaid() {
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.CASH);
+        BillResponse placed = billingService.createOnlineOrder("patient@example.com", request);
+
+        BillResponse paid = billingService.markPaid(franchise.getOwnerEmail(), placed.getId());
+
+        assertThat(paid.getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(paid.getInvoiceNumber()).isNotNull();
+        assertThat(productRepository.findById(paracetamol.getId()).orElseThrow().getStockQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    void patientSeesTheirOwnOrders() {
+        billingService.createOnlineOrder("patient@example.com", onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.CASH));
+
+        assertThat(billingService.listForPatient("patient@example.com")).hasSize(1);
+    }
+
+    private CreateOnlineOrderRequest onlineOrderRequest(List<BillItemRequest> items, PaymentMode paymentMode) {
+        CreateOnlineOrderRequest request = new CreateOnlineOrderRequest();
+        request.setFranchiseId(franchise.getId().toString());
+        request.setItems(items);
+        request.setPaymentMode(paymentMode);
+        return request;
     }
 
     private Product newProduct(String name, BigDecimal price, int stock, BigDecimal gst) {

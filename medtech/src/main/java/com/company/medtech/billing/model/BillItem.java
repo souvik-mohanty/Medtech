@@ -49,6 +49,9 @@ public class BillItem {
     @Column(name = "line_total", nullable = false)
     private BigDecimal lineTotal;
 
+    @Column(name = "item_order", nullable = false)
+    private int itemOrder;
+
     public UUID getId() {
         return id;
     }
@@ -127,5 +130,13 @@ public class BillItem {
 
     public void setLineTotal(BigDecimal lineTotal) {
         this.lineTotal = lineTotal;
+    }
+
+    public int getItemOrder() {
+        return itemOrder;
+    }
+
+    public void setItemOrder(int itemOrder) {
+        this.itemOrder = itemOrder;
     }
 }

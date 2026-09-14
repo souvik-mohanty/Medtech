@@ -38,6 +38,12 @@ public class FranchiseBillingController {
         return ApiResponse.success("OK", billingService.listForOwner(authentication.getName()));
     }
 
+    /** Confirms a CASH online order was actually paid (on delivery/pickup) — deducts stock and assigns the invoice number. */
+    @PatchMapping("/bills/{billId}/mark-paid")
+    public ApiResponse<BillResponse> markPaid(Authentication authentication, @PathVariable String billId) {
+        return ApiResponse.success("Marked paid", billingService.markPaid(authentication.getName(), billId));
+    }
+
     /** Returns the invoice PDF for printing/download. */
     @GetMapping("/bills/{billId}/invoice")
     public ResponseEntity<byte[]> downloadInvoice(Authentication authentication, @PathVariable String billId) {

@@ -14,6 +14,7 @@ import com.company.medtech.lab.repository.LabTestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,7 +60,24 @@ public class LabTestService {
         test.setName(request.getName());
         test.setPrice(request.getPrice());
         test.setActive(true);
+        test.setCode(request.getCode());
+        test.setCategory(request.getCategory());
+        test.setDescription(request.getDescription());
+        test.setSampleType(request.getSampleType());
+        test.setPreparationInstructions(request.getPreparationInstructions());
+        test.setReportTurnaroundHours(request.getReportTurnaroundHours());
+        test.setPrescriptionRequired(request.isPrescriptionRequired());
 
+        return toResponse(labTestRepository.save(test));
+    }
+
+    /** No dedicated deactivate/activate mock counterpart existed on the backend before — mirrors lp-care-web's toggleTestActive. */
+    @Transactional
+    public LabTestResponse toggleTestActive(String ownerEmail, String testId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        LabTest test = labTestRepository.findByIdAndFranchiseId(parseId(testId), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("LabTest", "id", testId));
+        test.setActive(!test.isActive());
         return toResponse(labTestRepository.save(test));
     }
 
@@ -103,7 +121,19 @@ public class LabTestService {
         combo.setComboPrice(request.getComboPrice());
         combo.setActive(true);
         combo.setTests(tests);
+        combo.setDescription(request.getDescription());
+        combo.setPreparationInstructions(request.getPreparationInstructions());
+        combo.setReportTurnaroundHours(request.getReportTurnaroundHours());
 
+        return toComboResponse(labTestComboRepository.save(combo));
+    }
+
+    @Transactional
+    public LabTestComboResponse toggleComboActive(String ownerEmail, String comboId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        LabTestCombo combo = labTestComboRepository.findByIdAndFranchiseId(parseId(comboId), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("LabTestCombo", "id", comboId));
+        combo.setActive(!combo.isActive());
         return toComboResponse(labTestComboRepository.save(combo));
     }
 
@@ -124,17 +154,36 @@ public class LabTestService {
     }
 
     private LabTestResponse toResponse(LabTest test) {
-        return new LabTestResponse(test.getId().toString(), test.getName(), test.getPrice(), test.isActive());
+        return new LabTestResponse(
+                test.getId().toString(),
+                test.getName(),
+                test.getPrice(),
+                test.isActive(),
+                test.getCode(),
+                test.getCategory(),
+                test.getDescription(),
+                test.getSampleType(),
+                test.getPreparationInstructions(),
+                test.getReportTurnaroundHours(),
+                test.isPrescriptionRequired()
+        );
     }
 
     private LabTestComboResponse toComboResponse(LabTestCombo combo) {
         List<LabTestResponse> testResponses = combo.getTests().stream().map(this::toResponse).toList();
+        BigDecimal totalPrice = combo.getTests().stream()
+                .map(LabTest::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new LabTestComboResponse(
                 combo.getId().toString(),
                 combo.getName(),
                 combo.getComboPrice(),
+                totalPrice,
                 combo.isActive(),
-                testResponses
+                testResponses,
+                combo.getDescription(),
+                combo.getPreparationInstructions(),
+                combo.getReportTurnaroundHours()
         );
     }
 }

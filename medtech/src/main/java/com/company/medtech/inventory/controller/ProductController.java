@@ -37,6 +37,20 @@ public class ProductController {
         return ApiResponse.success("Product added", productService.create(authentication.getName(), request));
     }
 
+    @PutMapping(value = "/products/{productId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<ProductResponse> update(
+            Authentication authentication,
+            @PathVariable String productId,
+            @Valid @RequestBody ProductRequest request
+    ) {
+        return ApiResponse.success("Product updated", productService.update(authentication.getName(), productId, request));
+    }
+
+    @PatchMapping("/products/{productId}/toggle-active")
+    public ApiResponse<ProductResponse> toggleActive(Authentication authentication, @PathVariable String productId) {
+        return ApiResponse.success("Product updated", productService.toggleActive(authentication.getName(), productId));
+    }
+
     @GetMapping("/insights")
     public ApiResponse<InventoryInsightsResponse> insights(Authentication authentication) {
         return ApiResponse.success("OK", productService.getInsights(authentication.getName()));

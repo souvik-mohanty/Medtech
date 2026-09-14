@@ -31,7 +31,7 @@ public class ProductService {
 
     public List<ProductResponse> listForOwner(String ownerEmail) {
         Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
-        return productRepository.findByFranchiseIdAndActiveTrue(franchise.getId())
+        return productRepository.findByFranchiseIdOrderByNameAsc(franchise.getId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -60,9 +60,37 @@ public class ProductService {
         product.setExpiryDate(request.getExpiryDate());
         product.setStockQuantity(request.getStockQuantity());
         product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
+        product.setPrescriptionRequired(request.isPrescriptionRequired());
         product.setActive(true);
 
         return toResponse(productRepository.save(product));
+    }
+
+    public ProductResponse update(String ownerEmail, String productId, ProductRequest request) {
+        Product product = findOwned(ownerEmail, productId);
+        product.setName(request.getName());
+        product.setUnit(request.getUnit());
+        product.setSellingPrice(request.getSellingPrice());
+        product.setPurchasePrice(request.getPurchasePrice());
+        product.setMfgDate(request.getMfgDate());
+        product.setPurchaseDate(request.getPurchaseDate());
+        product.setExpiryDate(request.getExpiryDate());
+        product.setStockQuantity(request.getStockQuantity());
+        product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
+        product.setPrescriptionRequired(request.isPrescriptionRequired());
+        return toResponse(productRepository.save(product));
+    }
+
+    public ProductResponse toggleActive(String ownerEmail, String productId) {
+        Product product = findOwned(ownerEmail, productId);
+        product.setActive(!product.isActive());
+        return toResponse(productRepository.save(product));
+    }
+
+    private Product findOwned(String ownerEmail, String productId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        return productRepository.findByIdAndFranchiseId(parseId(productId, "Product"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
     }
 
     /** Dashboard figures — total stock, valuation, and expiry-driven alerts. */
@@ -110,6 +138,14 @@ public class ProductService {
         }
     }
 
+    private UUID parseId(String id, String resourceName) {
+        try {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new ResourceNotFoundException(resourceName, "id", id);
+        }
+    }
+
     private ProductResponse toResponse(Product product) {
         return new ProductResponse(
                 product.getId().toString(),
@@ -121,7 +157,9 @@ public class ProductService {
                 product.getPurchaseDate(),
                 product.getExpiryDate(),
                 product.getStockQuantity(),
-                product.getGstPercentage()
+                product.getGstPercentage(),
+                product.isPrescriptionRequired(),
+                product.isActive()
         );
     }
 }

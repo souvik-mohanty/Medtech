@@ -49,6 +49,14 @@ public class LabTestCombo {
     )
     private List<LabTest> tests = new ArrayList<>();
 
+    private String description;
+
+    @Column(name = "preparation_instructions")
+    private String preparationInstructions;
+
+    @Column(name = "report_turnaround_hours", nullable = false)
+    private int reportTurnaroundHours = 24;
+
     public UUID getId() {
         return id;
     }
@@ -95,5 +103,29 @@ public class LabTestCombo {
 
     public void setTests(List<LabTest> tests) {
         this.tests = tests;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPreparationInstructions() {
+        return preparationInstructions;
+    }
+
+    public void setPreparationInstructions(String preparationInstructions) {
+        this.preparationInstructions = preparationInstructions;
+    }
+
+    public int getReportTurnaroundHours() {
+        return reportTurnaroundHours;
+    }
+
+    public void setReportTurnaroundHours(int reportTurnaroundHours) {
+        this.reportTurnaroundHours = reportTurnaroundHours;
     }
 }

@@ -8,16 +8,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * A patient's online medicine order. Creates a PAYMENT_PENDING bill only —
- * there is no payment gateway wired up yet (see BillingService), so this
- * alone does not complete a purchase.
- */
+import java.util.List;
+
+/** A patient's own medicine/equipment orders — placing one, and viewing order history. */
 @RestController
 @RequestMapping(
         value = "/api/patient/orders",
@@ -33,9 +32,11 @@ public class PatientOrderController {
             Authentication authentication,
             @Valid @RequestBody CreateOnlineOrderRequest request
     ) {
-        return ApiResponse.success(
-                "Order created, awaiting payment",
-                billingService.createOnlineOrder(authentication.getName(), request)
-        );
+        return ApiResponse.success("Order placed", billingService.createOnlineOrder(authentication.getName(), request));
+    }
+
+    @GetMapping
+    public ApiResponse<List<BillResponse>> list(Authentication authentication) {
+        return ApiResponse.success("OK", billingService.listForPatient(authentication.getName()));
     }
 }

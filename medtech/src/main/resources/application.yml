@@ -46,17 +46,25 @@ spring:
     mode: HTML
     cache: false
 
+  # -------------------- Multipart uploads --------------------
+  # Spring Boot's own default is 1MB per file, easily exceeded by a real
+  # scanned lab report PDF — see lab.service.LabReportService#upload.
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+
 # -------------------- JWT --------------------
 jwt:
   secret: medtech-secret-key-change-this-immediately
   expiration: 86400000   # 24 hours (in ms)
 
 # -------------------- CORS --------------------
-# Local dev origins for the React admin web app (Vite) and Flutter web.
+# Local dev origin for lp-care-web (Vite, pinned to :5180 in its
+# vite.config.ts — see that file for why it isn't Vite's default :5173).
 cors:
   allowed-origins:
-    - http://localhost:5173
-    - http://localhost:8081
+    - http://localhost:5180
 
 # -------------------- Google OAuth --------------------
 # Web/Android/iOS OAuth 2.0 client ID from Google Cloud Console. The ID token's

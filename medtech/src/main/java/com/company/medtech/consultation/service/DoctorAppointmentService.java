@@ -93,8 +93,11 @@ public class DoctorAppointmentService {
         appointment.setNote(request.getNote());
         appointment.setFee(schedule.getFee());
         appointment.setPaymentMode(request.getPaymentMode());
-        appointment.setStatus(OrderStatus.PAYMENT_PENDING);
-        appointment.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        boolean isCash = request.getPaymentMode() == PaymentMode.CASH;
+        appointment.setStatus(isCash ? OrderStatus.PAYMENT_PENDING : OrderStatus.PAID);
+        appointment.setCreatedAt(now);
+        appointment.setPaidAt(isCash ? null : now);
 
         return toResponse(doctorAppointmentRepository.save(appointment), schedule);
     }
@@ -103,6 +106,14 @@ public class DoctorAppointmentService {
     public List<DoctorAppointmentResponse> listForOwner(String ownerEmail) {
         Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
         return doctorAppointmentRepository.findByFranchiseIdOrderByCreatedAtDesc(franchise.getId())
+                .stream()
+                .map(this::toResponseWithSchedule)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DoctorAppointmentResponse> listForPatient(String patientEmail) {
+        return doctorAppointmentRepository.findByPatientEmailOrderByCreatedAtDesc(patientEmail)
                 .stream()
                 .map(this::toResponseWithSchedule)
                 .toList();

@@ -1,5 +1,6 @@
 package com.company.medtech.lab.dto;
 
+import com.company.medtech.lab.model.TestCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,4 +17,18 @@ public class LabTestRequest {
     @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal price;
+
+    private String code;
+
+    @NotNull
+    private TestCategory category;
+
+    private String description;
+    private String sampleType;
+    private String preparationInstructions;
+
+    @NotNull
+    private Integer reportTurnaroundHours;
+
+    private boolean prescriptionRequired;
 }

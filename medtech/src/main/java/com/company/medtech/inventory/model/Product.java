@@ -56,6 +56,9 @@ public class Product {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(name = "prescription_required", nullable = false)
+    private boolean prescriptionRequired = false;
+
     public UUID getId() {
         return id;
     }
@@ -150,5 +153,13 @@ public class Product {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public boolean isPrescriptionRequired() {
+        return prescriptionRequired;
+    }
+
+    public void setPrescriptionRequired(boolean prescriptionRequired) {
+        this.prescriptionRequired = prescriptionRequired;
     }
 }

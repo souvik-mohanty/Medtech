@@ -7,6 +7,7 @@ import com.company.medtech.lab.dto.LabTestComboRequest;
 import com.company.medtech.lab.dto.LabTestComboResponse;
 import com.company.medtech.lab.dto.LabTestRequest;
 import com.company.medtech.lab.dto.LabTestResponse;
+import com.company.medtech.lab.model.TestCategory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,7 @@ class LabTestServiceTest {
         comboRequest.setName("Basic Health Checkup");
         comboRequest.setComboPrice(new BigDecimal("400.00"));
         comboRequest.setTestIds(List.of(cbc.getId(), sugar.getId()));
+        comboRequest.setReportTurnaroundHours(24);
 
         LabTestComboResponse combo = labTestService.createCombo(franchise.getOwnerEmail(), comboRequest);
 
@@ -63,6 +65,7 @@ class LabTestServiceTest {
         comboRequest.setName("Sneaky Combo");
         comboRequest.setComboPrice(new BigDecimal("100.00"));
         comboRequest.setTestIds(List.of(foreignTest.getId()));
+        comboRequest.setReportTurnaroundHours(24);
 
         assertThatThrownBy(() -> labTestService.createCombo(franchise.getOwnerEmail(), comboRequest))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -72,6 +75,8 @@ class LabTestServiceTest {
         LabTestRequest request = new LabTestRequest();
         request.setName(name);
         request.setPrice(new BigDecimal(price));
+        request.setCategory(TestCategory.BLOOD);
+        request.setReportTurnaroundHours(24);
         return request;
     }
 

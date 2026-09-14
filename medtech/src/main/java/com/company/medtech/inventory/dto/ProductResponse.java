@@ -20,4 +20,6 @@ public class ProductResponse {
     private LocalDate expiryDate;
     private int stockQuantity;
     private BigDecimal gstPercentage;
+    private boolean prescriptionRequired;
+    private boolean active;
 }

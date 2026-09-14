@@ -34,6 +34,13 @@ public class UserAuth {
     @Column(nullable = false)
     private boolean active;
 
+    /** Captured from the Google ID token's `name`/`picture` claims, refreshed on every login. */
+    @Column(name = "full_name")
+    private String fullName;
+
+    @Column(name = "picture_url")
+    private String pictureUrl;
+
     public UUID getId() {
         return id;
     }
@@ -72,5 +79,21 @@ public class UserAuth {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPictureUrl() {
+        return pictureUrl;
+    }
+
+    public void setPictureUrl(String pictureUrl) {
+        this.pictureUrl = pictureUrl;
     }
 }

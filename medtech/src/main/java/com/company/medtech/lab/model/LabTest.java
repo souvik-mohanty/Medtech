@@ -2,6 +2,8 @@ package com.company.medtech.lab.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,6 +32,27 @@ public class LabTest {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    /** No safe backfill for existing rows — nullable at the DB level, uniqueness enforced in LabTestService for new tests only. */
+    private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TestCategory category = TestCategory.ROUTINE_HEALTH;
+
+    private String description;
+
+    @Column(name = "sample_type")
+    private String sampleType;
+
+    @Column(name = "preparation_instructions")
+    private String preparationInstructions;
+
+    @Column(name = "report_turnaround_hours", nullable = false)
+    private int reportTurnaroundHours = 24;
+
+    @Column(name = "prescription_required", nullable = false)
+    private boolean prescriptionRequired;
 
     public UUID getId() {
         return id;
@@ -69,5 +92,61 @@ public class LabTest {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public TestCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(TestCategory category) {
+        this.category = category;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
+    }
+
+    public String getPreparationInstructions() {
+        return preparationInstructions;
+    }
+
+    public void setPreparationInstructions(String preparationInstructions) {
+        this.preparationInstructions = preparationInstructions;
+    }
+
+    public int getReportTurnaroundHours() {
+        return reportTurnaroundHours;
+    }
+
+    public void setReportTurnaroundHours(int reportTurnaroundHours) {
+        this.reportTurnaroundHours = reportTurnaroundHours;
+    }
+
+    public boolean isPrescriptionRequired() {
+        return prescriptionRequired;
+    }
+
+    public void setPrescriptionRequired(boolean prescriptionRequired) {
+        this.prescriptionRequired = prescriptionRequired;
     }
 }

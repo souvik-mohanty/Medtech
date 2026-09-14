@@ -1,0 +1,1 @@
+ALTER TABLE product ADD COLUMN prescription_required BOOLEAN NOT NULL DEFAULT FALSE;
