@@ -3,7 +3,12 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { errorMessage } from '../../api/client';
-import { browseFranchiseLabTestCombos, browseFranchiseLabTests, browseFranchiseProducts } from '../../api/patientApi';
+import {
+  browseFranchiseDoctorSchedules,
+  browseFranchiseLabTestCombos,
+  browseFranchiseLabTests,
+  browseFranchiseProducts,
+} from '../../api/patientApi';
 import { useActiveFranchise } from './useActiveFranchise';
 
 export function PatientHomePage() {
@@ -12,6 +17,7 @@ export function PatientHomePage() {
   const [medicineCount, setMedicineCount] = useState<number | null>(null);
   const [labTestCount, setLabTestCount] = useState<number | null>(null);
   const [comboCount, setComboCount] = useState<number | null>(null);
+  const [doctorScheduleCount, setDoctorScheduleCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,11 +26,13 @@ export function PatientHomePage() {
       browseFranchiseProducts(franchise.id),
       browseFranchiseLabTests(franchise.id),
       browseFranchiseLabTestCombos(franchise.id),
+      browseFranchiseDoctorSchedules(franchise.id),
     ])
-      .then(([products, tests, combos]) => {
+      .then(([products, tests, combos, schedules]) => {
         setMedicineCount(products.length);
         setLabTestCount(tests.length);
         setComboCount(combos.length);
+        setDoctorScheduleCount(schedules.length);
       })
       .catch((err) => setError(errorMessage(err)));
   }, [franchise]);
@@ -79,11 +87,11 @@ export function PatientHomePage() {
         />
         <AvailabilityCard
           title="Doctor Appointments"
-          count={null}
-          available={false}
-          unavailableText="Not available yet"
-          link={null}
-          linkText={null}
+          count={doctorScheduleCount}
+          available={doctorScheduleCount != null && doctorScheduleCount > 0}
+          unavailableText="No doctor schedules available yet"
+          link="/patient/doctor-appointments"
+          linkText="Book an appointment"
         />
       </div>
     </AppLayout>

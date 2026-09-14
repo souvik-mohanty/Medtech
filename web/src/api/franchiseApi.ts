@@ -117,6 +117,52 @@ export interface LabTestComboRequest {
 export type LabPaymentMode = 'CASH' | 'ONLINE';
 export type LabBookingStatus = 'CREATED' | 'PAYMENT_PENDING' | 'PAID' | 'CONFIRMED' | 'CANCELLED';
 
+export type SlotType = 'LIMITED' | 'REQUEST';
+
+export interface DoctorSchedule {
+  id: string;
+  doctorName: string;
+  doctorSpecialization: string | null;
+  scheduleDate: string;
+  startTime: string;
+  endTime: string;
+  slotType: SlotType;
+  maxPatients: number | null;
+  bookedCount: number;
+  fee: number;
+  active: boolean;
+}
+
+export interface DoctorScheduleRequest {
+  doctorName: string;
+  doctorSpecialization?: string;
+  scheduleDate: string;
+  startTime: string;
+  endTime: string;
+  slotType: SlotType;
+  maxPatients?: number;
+  fee: number;
+}
+
+export interface DoctorAppointment {
+  id: string;
+  patientEmail: string;
+  doctorName: string;
+  doctorSpecialization: string | null;
+  scheduleDate: string;
+  startTime: string;
+  endTime: string;
+  slotType: SlotType;
+  serialNumber: number | null;
+  mobileNumber: string;
+  note: string | null;
+  fee: number;
+  paymentMode: LabPaymentMode;
+  status: LabBookingStatus;
+  createdAt: string;
+  paidAt: string | null;
+}
+
 export interface LabTestBooking {
   id: string;
   patientEmail: string;
@@ -244,6 +290,26 @@ export async function listLabTestBookings(): Promise<LabTestBooking[]> {
 export async function markLabTestBookingPaid(bookingId: string): Promise<LabTestBooking> {
   const response = await apiClient.patch(`/api/franchise/labtests/bookings/${bookingId}/mark-paid`);
   return response.data.data as LabTestBooking;
+}
+
+export async function listDoctorSchedules(): Promise<DoctorSchedule[]> {
+  const response = await apiClient.get('/api/franchise/doctors/schedules');
+  return response.data.data as DoctorSchedule[];
+}
+
+export async function createDoctorSchedule(request: DoctorScheduleRequest): Promise<DoctorSchedule> {
+  const response = await apiClient.post('/api/franchise/doctors/schedules', request);
+  return response.data.data as DoctorSchedule;
+}
+
+export async function listDoctorAppointments(): Promise<DoctorAppointment[]> {
+  const response = await apiClient.get('/api/franchise/doctors/appointments');
+  return response.data.data as DoctorAppointment[];
+}
+
+export async function markDoctorAppointmentPaid(appointmentId: string): Promise<DoctorAppointment> {
+  const response = await apiClient.patch(`/api/franchise/doctors/appointments/${appointmentId}/mark-paid`);
+  return response.data.data as DoctorAppointment;
 }
 
 export async function createCounterBill(request: CounterBillRequest): Promise<Bill> {

@@ -9,12 +9,15 @@ import { BillingPage } from './pages/shop-owner/BillingPage';
 import { InventoryPage } from './pages/shop-owner/InventoryPage';
 import { LabTestsPage } from './pages/shop-owner/LabTestsPage';
 import { LabBookingsPage } from './pages/shop-owner/LabBookingsPage';
+import { DoctorSchedulesPage } from './pages/shop-owner/DoctorSchedulesPage';
+import { DoctorAppointmentsPage } from './pages/shop-owner/DoctorAppointmentsPage';
 import { BrandingPage } from './pages/shop-owner/BrandingPage';
 import { PaymentGatewayPage } from './pages/shop-owner/PaymentGatewayPage';
 import { PatientHomePage } from './pages/patient/PatientHomePage';
 import { BrowsePage } from './pages/patient/BrowsePage';
 import { PlaceOrderPage } from './pages/patient/PlaceOrderPage';
 import { BookLabTestPage } from './pages/patient/BookLabTestPage';
+import { BookDoctorAppointmentPage } from './pages/patient/BookDoctorAppointmentPage';
 
 function HomeRedirect() {
   const { role } = useAuth();
@@ -87,6 +90,22 @@ export default function App() {
             }
           />
           <Route
+            path="/shop/doctor-schedules"
+            element={
+              <RoleRoute allow="FRANCHISE">
+                <DoctorSchedulesPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/shop/doctor-appointments"
+            element={
+              <RoleRoute allow="FRANCHISE">
+                <DoctorAppointmentsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/shop/branding"
             element={
               <RoleRoute allow="FRANCHISE">
@@ -132,6 +151,14 @@ export default function App() {
             element={
               <RoleRoute allow="PATIENT">
                 <BookLabTestPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/patient/doctor-appointments"
+            element={
+              <RoleRoute allow="PATIENT">
+                <BookDoctorAppointmentPage />
               </RoleRoute>
             }
           />
