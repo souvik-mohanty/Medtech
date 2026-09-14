@@ -8,10 +8,12 @@ import { DashboardPage } from './pages/shop-owner/DashboardPage';
 import { BillingPage } from './pages/shop-owner/BillingPage';
 import { InventoryPage } from './pages/shop-owner/InventoryPage';
 import { LabTestsPage } from './pages/shop-owner/LabTestsPage';
+import { LabBookingsPage } from './pages/shop-owner/LabBookingsPage';
 import { BrandingPage } from './pages/shop-owner/BrandingPage';
 import { PaymentGatewayPage } from './pages/shop-owner/PaymentGatewayPage';
 import { BrowsePage } from './pages/patient/BrowsePage';
 import { PlaceOrderPage } from './pages/patient/PlaceOrderPage';
+import { BookLabTestPage } from './pages/patient/BookLabTestPage';
 
 function HomeRedirect() {
   const { role } = useAuth();
@@ -76,6 +78,14 @@ export default function App() {
             }
           />
           <Route
+            path="/shop/lab-bookings"
+            element={
+              <RoleRoute allow="FRANCHISE">
+                <LabBookingsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/shop/branding"
             element={
               <RoleRoute allow="FRANCHISE">
@@ -105,6 +115,14 @@ export default function App() {
             element={
               <RoleRoute allow="PATIENT">
                 <PlaceOrderPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/patient/lab-tests"
+            element={
+              <RoleRoute allow="PATIENT">
+                <BookLabTestPage />
               </RoleRoute>
             }
           />

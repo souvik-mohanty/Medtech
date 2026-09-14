@@ -114,6 +114,22 @@ export interface LabTestComboRequest {
   testIds: string[];
 }
 
+export type LabPaymentMode = 'CASH' | 'ONLINE';
+export type LabBookingStatus = 'CREATED' | 'PAYMENT_PENDING' | 'PAID' | 'CONFIRMED' | 'CANCELLED';
+
+export interface LabTestBooking {
+  id: string;
+  patientEmail: string;
+  itemName: string;
+  amount: number;
+  address: string;
+  mobileNumber: string;
+  paymentMode: LabPaymentMode;
+  status: LabBookingStatus;
+  createdAt: string;
+  paidAt: string | null;
+}
+
 export interface BillItem {
   productId: string;
   productName: string;
@@ -218,6 +234,16 @@ export async function listLabTestCombos(): Promise<LabTestCombo[]> {
 export async function createLabTestCombo(request: LabTestComboRequest): Promise<LabTestCombo> {
   const response = await apiClient.post('/api/franchise/labtests/combos', request);
   return response.data.data as LabTestCombo;
+}
+
+export async function listLabTestBookings(): Promise<LabTestBooking[]> {
+  const response = await apiClient.get('/api/franchise/labtests/bookings');
+  return response.data.data as LabTestBooking[];
+}
+
+export async function markLabTestBookingPaid(bookingId: string): Promise<LabTestBooking> {
+  const response = await apiClient.patch(`/api/franchise/labtests/bookings/${bookingId}/mark-paid`);
+  return response.data.data as LabTestBooking;
 }
 
 export async function createCounterBill(request: CounterBillRequest): Promise<Bill> {

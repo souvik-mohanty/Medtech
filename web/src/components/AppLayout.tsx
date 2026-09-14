@@ -7,12 +7,14 @@ const SHOP_NAV = [
   { to: '/shop/billing', label: 'Billing' },
   { to: '/shop/inventory', label: 'Inventory' },
   { to: '/shop/lab-tests', label: 'Lab Tests' },
+  { to: '/shop/lab-bookings', label: 'Lab Bookings' },
   { to: '/shop/branding', label: 'Branding' },
   { to: '/shop/payment-gateway', label: 'Payment Gateway' },
 ];
 
 const PATIENT_NAV = [
   { to: '/patient', label: 'Browse & Order', end: true },
+  { to: '/patient/lab-tests', label: 'Book Lab Test' },
   { to: '/onboard', label: 'Become a Shop Owner' },
 ];
 
