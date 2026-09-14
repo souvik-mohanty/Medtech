@@ -1,7 +1,14 @@
 # MedTech Platform
 
-Franchise-based medicine, clinic & lab management platform. Web + Flutter
-mobile clients on a shared Spring Boot backend.
+Franchise-based medicine, clinic & lab management platform. Purely
+web-based: a single React client (`web/`) on a shared Spring Boot backend —
+no mobile apps.
+
+Two user roles: **Franchise** (shop owner) and **Patient**. There is no
+Admin/Super Admin, Customer Support, Doctor, Lab Technician, or Delivery
+Partner account — the shop owner handles doctor appointments, delivery, and
+lab reports herself rather than those being separate logged-in roles. See
+the User Roles section of `docs/PROJECT_SPEC.md` for the full rationale.
 
 Full requirements, business rules, and module checklists:
 [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md). Read it before implementing any
@@ -40,18 +47,27 @@ cash; invoices are immutable once generated; frontend never computes money).
   - `auth/` — Google OAuth login only for now (mobile OTP was removed; see
     the login-method table in
     [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md#2-user-roles--permissions)),
-    JWT issuance, role-aware login rules
-  - `common/` — shared constants (roles, role groups), enums
-    (`AppointmentStatus`, `OrderStatus`, `PaymentStatus`), exceptions, API
-    response wrapper
+    JWT issuance. A first sign-in with an unknown email auto-provisions a
+    Patient; Franchise (shop owner) is reached only by a Patient
+    self-onboarding (see `franchise/` below) — never pre-provisioned
+  - `common/` — shared constants (`AppConstants.ROLE_FRANCHISE`/
+    `ROLE_PATIENT`), enums (`AppointmentStatus`, `OrderStatus`,
+    `PaymentStatus`), exceptions, API response wrapper
   - `config/` — Security (JWT filter wired in, stateless sessions, CORS for
     the local dev origins in `cors.allowed-origins`) and JWT config are
     implemented; WebSocket/Payment config classes are still empty stubs,
     pending those modules
-  - `franchise/` — a franchise's own profile + invoice branding (logo,
-    accent color, one of a closed set of fonts, footer note, GSTIN/contact).
-    `GET/PUT /api/franchise/profile`. Deliberately structured settings, not
-    a free-form HTML/CSS template editor — see `InvoiceFont`. Also owns
+  - `franchise/` — self-service onboarding (`POST /api/franchise/onboard`):
+    any logged-in Patient can turn their own account into a Franchise (shop
+    owner) account — the only way to create one, since there's no admin to
+    provision it. Promotes the caller's `UserAuth` role and creates their
+    `Franchise` row in one transaction, then mints and returns a fresh JWT
+    (the caller's existing token still says PATIENT) so the client can
+    hot-swap it without a re-login — see `FranchiseService#onboard`. Also
+    owns the franchise's own profile + invoice branding (logo, accent
+    color, one of a closed set of fonts, footer note, GSTIN/contact) via
+    `GET/PUT /api/franchise/profile` — deliberately structured settings,
+    not a free-form HTML/CSS template editor, see `InvoiceFont` — and
     payment gateway config (`GET/PUT/DELETE /api/franchise/payment-gateway`)
     — each franchise brings its own Razorpay/PhonePe API key + secret; the
     secret is AES-256-GCM encrypted at rest via `CredentialEncryptionService`
@@ -91,55 +107,40 @@ cash; invoices are immutable once generated; frontend never computes money).
     table-based layout only. Verified end-to-end with a real generated PDF
     in `billing/service/InvoicePdfServiceTest` (no Spring context needed
     for that test).
-  - `subscription/` — admin-only (`/api/admin/subscription-plans`, reuses
-    the existing `hasRole(ADMIN)` rule) CRUD for the subscription plan
-    catalog: name, flat price, which of `PlanFeature`
-    (`DOCTOR_APPOINTMENT`/`LAB_SERVICES`/`DELIVERY`) it includes. Catalog
-    only — there is no link from `Franchise` to a chosen plan yet and
-    `PlanFeature` isn't enforced anywhere (those modules don't exist yet
-    either).
   - `resources/templates/invoices/` — Thymeleaf templates for
     appointment/medicine invoices
   - `resources/templates/notifications/` — email/WhatsApp templates
 
 No other feature modules (patient management beyond ordering, doctor
 booking, lab, coupons, payments) are implemented yet — only the package
-scaffold and shared config exist for those areas. Notably: there is still no
-admin API to provision Franchise Owner, Doctor, Lab Technician, Delivery
-Partner, Admin, or Customer Support accounts, **or Franchise documents** —
-those currently must be inserted into `user_auth` / `franchise` directly.
+scaffold and shared config exist for those areas. When they are built, the
+shop owner operates doctor appointments, delivery, and lab reports directly
+(entering a doctor's name/specialization when creating a slot, marking a
+lab report uploaded, marking a delivery complete) — there are no separate
+Doctor/Lab Technician/Delivery Partner accounts to provision.
 
-## Frontend clients
+## Frontend client
 
-- `admin-web/` — Super Admin webpage. React + TypeScript + Vite, Google
-  OAuth login (client-side gated to `ADMIN`/`CUSTOMER_SUPPORT`). Real
-  feature: Subscription Plans page (create/list/deactivate plans against
-  `/api/admin/subscription-plans`) — the rest of the dashboard is still a
-  placeholder. See `admin-web/README.md`.
-- `apps/` — six independent Flutter apps, one per non-admin role (Patient,
-  Franchise Owner, Doctor, Lab Technician, Delivery Partner, Customer
-  Support). Google OAuth login wired to the backend, JWT attached to every
-  request via a Dio interceptor; Doctor/Lab Technician/Delivery Partner also
-  require a franchise ID. `patient_app` (browse + order) and `franchise_app`
-  (billing incl. print, inventory, branding, payment gateway config) call
-  real backend endpoints; the other four have no backend module to call yet,
-  so their dashboards show clearly-commented static mock data instead — see
-  `apps/README.md`'s table. **Flutter SDK was not available when these were
-  created**, so only `pubspec.yaml`/`lib/` exist and none of this has been
-  run; see `apps/README.md` for the `flutter create .` step needed to add
-  platform folders. See each app's own README for details.
+- `web/` — the platform's only client. React + TypeScript + Vite, Google
+  OAuth login. One app, two role-gated sections after login: Patient
+  (browse a franchise's catalog, place an online order) and Franchise/shop
+  owner (self-service onboarding, billing incl. print, inventory, invoice
+  branding, payment gateway config). Client-side routing gates by role
+  (`src/auth/RoleRoute.tsx`); the backend's own `/api/franchise/**` /
+  `/api/patient/**` RBAC (`SecurityConfig`) is the real security boundary.
+  See `web/README.md`.
 
-All clients need `google.oauth.client-id` (backend) and their own Google
-client ID config to match, or OAuth login will fail verification — see the
-Google OAuth section of `docs/PROJECT_SPEC.md`. The real client ID
+`web/` needs `google.oauth.client-id` (backend) and its own Google client ID
+config to match, or OAuth login will fail verification — see the Google
+OAuth section of `docs/PROJECT_SPEC.md`. The real client ID
 (`688656564041-...apps.googleusercontent.com`, a dedicated "MedTech
 Platform" Web application client in project `vertexcodelabs` — not the
 original shared client, which had a different app's redirect URIs) is
-already set in the backend, all 6 Flutter apps, and `admin-web/.env.local`
-(gitignored). The matching client **secret** is never stored anywhere in
-this repo — the ID-token verification flow used here doesn't need it, only
-the client ID (which is not secret; it's meant to be embedded in clients).
+already set in the backend and `web/.env.local` (gitignored). The matching
+client **secret** is never stored anywhere in this repo — the ID-token
+verification flow used here doesn't need it, only the client ID (which is
+not secret; it's meant to be embedded in clients).
 
 ## Status
 
-Not yet a git repository.
+Git-initialized.

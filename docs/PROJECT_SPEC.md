@@ -2,16 +2,16 @@
 
 Full project specification: architecture, roles, tech stack, feature modules, and
 system-wide business rules. This is the source-of-truth requirements document for
-the MedTech platform. Also targets a Flutter mobile app alongside the web frontend
-and this Spring Boot backend.
+the MedTech platform. Purely web-based — a single web frontend on this Spring
+Boot backend, no mobile app.
 
 ---
 
 ## 1. Project Overview
 
 **Purpose:** a centralized healthcare platform enabling medicine sales, doctor
-consultation bookings, lab test bookings, and billing/invoice generation across
-multiple franchise locations, managed by a single admin system.
+consultation bookings, lab test bookings, and billing/invoice generation for a
+franchise (shop), directly self-managed by its owner — no platform admin.
 
 **Architecture decision:**
 - Monolithic backend
@@ -22,26 +22,29 @@ multiple franchise locations, managed by a single admin system.
 
 ## 2. User Roles & Permissions
 
-**Roles:** Admin (Super Admin), Customer Support, Franchise Owner, Patient,
-Doctor, Lab Technician, Delivery Partner.
+**Roles:** Franchise (shop owner), Patient. That's the whole set — there is
+no Admin/Super Admin, Customer Support, Doctor, Lab Technician, or Delivery
+Partner account. The shop owner runs doctor appointments, delivery, and lab
+reports herself (e.g. entering a doctor's name/specialization when creating
+an appointment slot, marking a lab report uploaded, marking a delivery
+complete) instead of those being separate logged-in staff.
 
 **Access control:**
 - Role-Based Access Control (RBAC)
 - JWT-based authentication
 - Backend-enforced permissions (frontend is never trusted)
 
-**Login method by role (enforced backend-side, not just on the client):**
+**Login method (enforced backend-side, not just on the client):**
 
-Mobile OTP is removed for now — **Google OAuth is the only login method for
-every role**, until OTP/WhatsApp delivery is built out.
+Mobile OTP is removed for now — **Google OAuth is the only login method**,
+until OTP/WhatsApp delivery is built out. No franchise scoping at login.
 
-| Role group | Login method | Notes |
-|---|---|---|
-| Patient, Franchise Owner | Google OAuth | No franchise scoping. First-ever sign-in with an unknown email auto-provisions a Patient. |
-| Doctor, Lab Technician, Delivery Partner | Google OAuth **+** franchise/clinic ID | Account must be pre-provisioned (by an admin/franchise owner — that provisioning UI doesn't exist yet) with a `franchiseId`; login fails unless the submitted franchise ID matches the one their account is assigned to. |
-| Admin, Customer Support | Google OAuth | Platform-wide, not franchise-scoped. Account must be pre-provisioned; there is no self-registration path for these roles. |
+| Role | How the account is created |
+|---|---|
+| Patient | Self-registers automatically: first-ever sign-in with an unknown email auto-provisions a Patient. |
+| Franchise (shop owner) | Self-onboarding only: a logged-in Patient calls `POST /api/franchise/onboard` once, which promotes their account and creates their franchise. There is no admin to pre-provision one, and no other path. |
 
-`email` is now the account's primary identity (unique, always set — Google
+`email` is the account's primary identity (unique, always set — Google
 always supplies it). `mobile` is optional and not collected at signup; it's
 meant to be filled in later via a profile step once WhatsApp notifications
 are built, and is not currently used for login.
@@ -69,7 +72,7 @@ are built, and is not currently used for login.
   Flying Saucer), franchise-wise custom templates
 - **Infrastructure:** AWS EC2, AWS RDS (PostgreSQL), AWS S3 (reports &
   invoices), Nginx, HTTPS (Let's Encrypt)
-- **Clients:** Web app + Flutter mobile app, both consuming the same backend API
+- **Clients:** a single web app (React + TypeScript + Vite) consuming the backend API — no mobile app
 
 ---
 
@@ -88,8 +91,10 @@ are built, and is not currently used for login.
   data privacy enforced
 
 ### 4.3 Doctor Consultation Booking
-- Doctor listing by specialization, slot-based booking, mandatory online
-  payment for patient bookings, reschedule/cancel, appointment history
+- Doctors are not a login role — the franchise owner enters a doctor's
+  name/specialization directly when creating a bookable slot. Doctor
+  listing by specialization, slot-based booking, mandatory online payment
+  for patient bookings, reschedule/cancel, appointment history
 - **Mandatory business rule:** patient must pay the consultation fee online
   while booking; unpaid online booking from the patient side is not allowed
 - **Franchise counter booking (special case):** franchise owner can add a
@@ -102,8 +107,10 @@ are built, and is not currently used for login.
   lifecycle defined
 
 ### 4.4 Lab Test Booking
-- Test & package browsing, prescription upload, home collection or lab visit,
-  report upload & download
+- Lab technicians are not a login role — the franchise owner uploads test
+  reports and manages bookings herself. Test & package browsing,
+  prescription upload, home collection or lab visit, report upload &
+  download
 - Tech: MongoDB, S3 for reports, WhatsApp notifications
 - Checklist: report access secured; status flow enforced; home collection
   slots validated
@@ -149,22 +156,14 @@ any API response, only a masked key.
 - Checklist: async execution; failure retry; delivery logs stored
 
 ### 4.10 Franchise Owner Module
-- Dashboard, doctor & staff management, manual appointment entry, cash
-  payment handling, inventory & finance reports
+- Self-service onboarding (`POST /api/franchise/onboard` — a Patient
+  promotes their own account, there is no admin to do it for them),
+  dashboard, doctor appointment / delivery / lab management (operated
+  directly by the owner, not delegated to separate staff accounts), manual
+  counter appointment/order entry, cash payment handling, inventory &
+  finance reports
 - Checklist: cash payments restricted to franchise role; franchise data
   isolation; revenue reports accurate
-
-### 4.11 Admin Module
-- Franchise onboarding, pricing & commission control, coupon & offer
-  management, global analytics, audit logs
-- Checklist: role permissions locked; audit logs enabled; franchise
-  suspension supported
-
-**Subscription plans:** admin defines the plan catalog — a name, a flat
-price, and which optional service modules it includes (Online Doctor
-Appointment, Lab Services, Delivery). This is catalog management only:
-assigning a plan to a specific franchise, billing/collecting for it, and
-actually gating those modules by plan are separate, not-yet-built steps.
 
 ---
 
@@ -267,13 +266,7 @@ actually gating those modules by plan are separate, not-yet-built steps.
 - Restricted (cannot change): platform commission, global coupon rules,
   invoice numbering logic
 
-### 7.11 Admin-Level Rules
-- Global overrides: enable/disable delivery charges platform-wide, cap
-  maximum delivery charge, emergency franchise suspension
-- Monitoring: high cancellation detection, coupon abuse detection, payment
-  mismatch alerts
-
-### 7.12 System Safety Rules (very important)
+### 7.11 System Safety Rules (very important)
 - All prices calculated on the backend; frontend is never trusted for money
 - All status transitions validated
 - Idempotent payment webhooks

@@ -68,12 +68,12 @@
 
     // ---------------- Web ----------------
     {
-      "label": "Admin Web: Vite Dev Server",
-      "detail": "admin-web/ — React admin panel on :5173",
+      "label": "Web: Vite Dev Server",
+      "detail": "web/ — unified Shop Owner + Patient app on :5173",
       "type": "shell",
       "command": "npm",
       "args": ["run", "dev"],
-      "options": { "cwd": "${workspaceFolder}/admin-web" },
+      "options": { "cwd": "${workspaceFolder}/web" },
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -95,76 +95,17 @@
 
     // ---------------- Aggregate ----------------
     {
-      "label": "Services: Backend + Admin Web (parallel)",
+      "label": "Services: Backend + Web (parallel)",
       "dependsOrder": "parallel",
-      "dependsOn": ["Backend: Spring Boot", "Admin Web: Vite Dev Server"],
+      "dependsOn": ["Backend: Spring Boot", "Web: Vite Dev Server"],
       "problemMatcher": []
     },
     {
       "label": "Run All Services",
-      "detail": "PostgreSQL, then Backend + Admin Web together. Flutter apps are run individually (they're client apps on a device/emulator, not background services) — see the Flutter tasks below.",
+      "detail": "PostgreSQL, then Backend + Web together.",
       "dependsOrder": "sequence",
-      "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + Admin Web (parallel)"],
+      "dependsOn": ["PostgreSQL: Start (Docker)", "Services: Backend + Web (parallel)"],
       "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": []
-    },
-
-    // ---------------- Flutter apps ----------------
-    // Each needs `flutter create . --platforms=android,ios --org com.company.medtech`
-    // run once first (no platform folders exist yet — see apps/README.md)
-    // and a device/emulator attached. Not part of "Run All Services".
-    {
-      "label": "Flutter: patient_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/patient_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Flutter: franchise_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/franchise_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Flutter: doctor_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/doctor_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Flutter: lab_technician_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/lab_technician_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Flutter: delivery_partner_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/delivery_partner_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Flutter: customer_support_app",
-      "type": "shell",
-      "command": "flutter",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/apps/customer_support_app" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
       "problemMatcher": []
     }
   ]
