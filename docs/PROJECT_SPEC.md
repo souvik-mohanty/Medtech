@@ -42,7 +42,7 @@ until OTP/WhatsApp delivery is built out. No franchise scoping at login.
 | Role | How the account is created |
 |---|---|
 | Patient | Self-registers automatically: first-ever sign-in with an unknown email auto-provisions a Patient. |
-| Franchise (shop owner) | Self-onboarding only: a logged-in Patient calls `POST /api/franchise/onboard` once, which promotes their account and creates their franchise. There is no admin to pre-provision one, and no other path. |
+| Franchise (shop owner) | Provisioned directly in Postgres (`user_auth`/`franchise` rows) — there is deliberately no self-service or admin onboarding endpoint; a Patient cannot turn their own account into a Franchise through the app. |
 
 `email` is the account's primary identity (unique, always set — Google
 always supplies it). `mobile` is optional and not collected at signup; it's
@@ -156,12 +156,11 @@ any API response, only a masked key.
 - Checklist: async execution; failure retry; delivery logs stored
 
 ### 4.10 Franchise Owner Module
-- Self-service onboarding (`POST /api/franchise/onboard` — a Patient
-  promotes their own account, there is no admin to do it for them),
-  dashboard, doctor appointment / delivery / lab management (operated
-  directly by the owner, not delegated to separate staff accounts), manual
-  counter appointment/order entry, cash payment handling, inventory &
-  finance reports
+- Account provisioned directly in Postgres (no self-service or admin
+  onboarding endpoint), dashboard, doctor appointment / delivery / lab
+  management (operated directly by the owner, not delegated to separate
+  staff accounts), manual counter appointment/order entry, cash payment
+  handling, inventory & finance reports
 - Checklist: cash payments restricted to franchise role; franchise data
   isolation; revenue reports accurate
 

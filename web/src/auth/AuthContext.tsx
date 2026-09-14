@@ -14,9 +14,8 @@ export const TOKEN_STORAGE_KEY = 'medtech_web_token';
 const ROLE_STORAGE_KEY = 'medtech_web_role';
 
 // The only two roles the platform has. Google OAuth auto-provisions PATIENT
-// on first sign-in; FRANCHISE is reached only by a Patient onboarding their
-// own shop (see setSession, used by the onboarding flow to hot-swap the
-// token in place once the backend promotes the account).
+// on first sign-in; FRANCHISE accounts are provisioned directly in Postgres
+// (see CLAUDE.md) — there is no self-service or admin path to become one.
 const ALLOWED_ROLES = ['FRANCHISE', 'PATIENT'];
 
 interface AuthState {
@@ -28,7 +27,6 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   loginWithGoogleIdToken: (idToken: string) => Promise<void>;
-  setSession: (token: string, role: string) => void;
   logout: () => void;
 }
 
@@ -82,23 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Used right after a Patient onboards into a Franchise (shop owner)
-  // account: the backend returns a fresh token (role now FRANCHISE) since
-  // the old one, minted at login, still says PATIENT — swap it in place so
-  // the app doesn't need a full re-login.
-  const setSession = useCallback((newToken: string, newRole: string) => {
-    setToken(newToken);
-    setRole(newRole);
-  }, []);
-
   const logout = useCallback(() => {
     setToken(null);
     setRole(null);
   }, []);
 
   const value = useMemo(
-    () => ({ token, role, isLoading, error, loginWithGoogleIdToken, setSession, logout }),
-    [token, role, isLoading, error, loginWithGoogleIdToken, setSession, logout],
+    () => ({ token, role, isLoading, error, loginWithGoogleIdToken, logout }),
+    [token, role, isLoading, error, loginWithGoogleIdToken, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -19,7 +19,6 @@ const PATIENT_NAV = [
   { to: '/patient/order-medicine', label: 'Order Medicine' },
   { to: '/patient/lab-tests', label: 'Book Lab Test' },
   { to: '/patient/doctor-appointments', label: 'Book Appointment' },
-  { to: '/onboard', label: 'Become a Shop Owner' },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {

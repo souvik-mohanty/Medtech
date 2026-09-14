@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { RoleRoute } from './auth/RoleRoute';
 import { LoginPage } from './pages/LoginPage';
-import { OnboardingPage } from './pages/shop-owner/OnboardingPage';
 import { DashboardPage } from './pages/shop-owner/DashboardPage';
 import { BillingPage } from './pages/shop-owner/BillingPage';
 import { InventoryPage } from './pages/shop-owner/InventoryPage';
@@ -37,15 +36,6 @@ export default function App() {
               <ProtectedRoute>
                 <HomeRedirect />
               </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/onboard"
-            element={
-              <RoleRoute allow="PATIENT">
-                <OnboardingPage />
-              </RoleRoute>
             }
           />
 

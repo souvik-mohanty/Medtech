@@ -10,9 +10,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * Patient rows self-register on first Google sign-in; Franchise (shop owner)
- * rows are created by a Patient self-onboarding via FranchiseService#onboard.
- * No manual provisioning is needed for either role.
+ * Patient rows self-register on first Google sign-in. Franchise (shop
+ * owner) rows are provisioned directly in Postgres — there is deliberately
+ * no self-service or admin onboarding endpoint (see CLAUDE.md).
  */
 @Entity
 @Table(name = "user_auth")

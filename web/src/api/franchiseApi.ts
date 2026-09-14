@@ -16,18 +16,6 @@ export interface FranchiseProfile {
   invoicePrefix: string | null;
 }
 
-export interface OnboardRequest {
-  name: string;
-  gstin?: string;
-  contactPhone?: string;
-  contactEmail?: string;
-}
-
-export interface OnboardResponse extends FranchiseProfile {
-  token: string;
-  role: string;
-}
-
 export interface BrandingRequest {
   name: string;
   gstin?: string;
@@ -213,11 +201,6 @@ export interface CounterBillRequest {
   discountType?: DiscountType;
   discountValue?: number;
   note?: string;
-}
-
-export async function onboard(request: OnboardRequest): Promise<OnboardResponse> {
-  const response = await apiClient.post('/api/franchise/onboard', request);
-  return response.data.data as OnboardResponse;
 }
 
 export async function getProfile(): Promise<FranchiseProfile> {

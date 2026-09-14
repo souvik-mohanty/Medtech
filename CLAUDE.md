@@ -65,8 +65,9 @@ cash; invoices are immutable once generated; frontend never computes money).
     the login-method table in
     [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md#2-user-roles--permissions)),
     JWT issuance. A first sign-in with an unknown email auto-provisions a
-    Patient; Franchise (shop owner) is reached only by a Patient
-    self-onboarding (see `franchise/` below) — never pre-provisioned
+    Patient; Franchise (shop owner) has no self-service or admin path —
+    provisioned directly in Postgres (`user_auth`/`franchise` rows,
+    `role = 'FRANCHISE'`), by design
   - `common/` — shared constants (`AppConstants.ROLE_FRANCHISE`/
     `ROLE_PATIENT`), enums (`AppointmentStatus`, `OrderStatus`,
     `PaymentStatus`), exceptions, API response wrapper
@@ -74,32 +75,39 @@ cash; invoices are immutable once generated; frontend never computes money).
     the local dev origins in `cors.allowed-origins`) and JWT config are
     implemented; WebSocket/Payment config classes are still empty stubs,
     pending those modules
-  - `franchise/` — self-service onboarding (`POST /api/franchise/onboard`):
-    any logged-in Patient can turn their own account into a Franchise (shop
-    owner) account — the only way to create one, since there's no admin to
-    provision it. Promotes the caller's `UserAuth` role and creates their
-    `Franchise` row in one transaction, then mints and returns a fresh JWT
-    (the caller's existing token still says PATIENT) so the client can
-    hot-swap it without a re-login — see `FranchiseService#onboard`. Also
-    owns the franchise's own profile + invoice branding (logo, accent
-    color, one of a closed set of fonts, footer note, GSTIN/contact) via
-    `GET/PUT /api/franchise/profile` — deliberately structured settings,
-    not a free-form HTML/CSS template editor, see `InvoiceFont` — and
-    payment gateway config (`GET/PUT/DELETE /api/franchise/payment-gateway`)
-    — each franchise brings its own Razorpay/PhonePe API key + secret; the
-    secret is AES-256-GCM encrypted at rest via `CredentialEncryptionService`
-    (key: `security.credential-encryption-key`) and never returned by any
-    API response, only a masked key. `Franchise#hasActivePaymentGateway()`
-    gates online ordering — see `billing/` below.
+  - `franchise/` — no onboarding endpoint of any kind (deliberate — see
+    `auth/` above); this module only manages a franchise that already
+    exists. Owns the franchise's own profile + invoice branding (logo,
+    accent color, one of a closed set of fonts, footer note, GSTIN/contact)
+    via `GET/PUT /api/franchise/profile` — deliberately structured
+    settings, not a free-form HTML/CSS template editor, see `InvoiceFont`
+    — and payment gateway config
+    (`GET/PUT/DELETE /api/franchise/payment-gateway`) — each franchise
+    brings its own Razorpay/PhonePe API key + secret; the secret is
+    AES-256-GCM encrypted at rest via `CredentialEncryptionService` (key:
+    `security.credential-encryption-key`) and never returned by any API
+    response, only a masked key. `Franchise#hasActivePaymentGateway()`
+    gates online ordering — see `billing/` below. Also exposes
+    `GET /api/patient/franchises` (all active franchises, public fields
+    only) so the patient client never needs a franchise ID handed to it out
+    of band — only one franchise exists today, so it just uses the first
+    result, but the endpoint stays a list for when a second one exists.
   - `inventory/` — per-franchise product catalog (`Product`: name, unit,
-    price, stock, GST %). Franchise owner manages it
-    (`/api/franchise/inventory/products`); patients browse a specific
-    franchise's catalog read-only
-    (`/api/patient/franchises/{franchiseId}/products`).
+    sellingPrice, purchasePrice, stock, GST %, mfgDate/purchaseDate/
+    expiryDate — all three dates optional). Franchise owner manages it
+    (`/api/franchise/inventory/products`) and gets dashboard insights
+    (`GET /api/franchise/inventory/insights`: total products/stock
+    units/inventory value, plus expiring-soon (30-day window) and
+    already-expired product lists); patients browse a specific franchise's
+    catalog read-only (`/api/patient/franchises/{franchiseId}/products`).
   - `billing/` — `Bill`/`BillItem` (real `@OneToMany` relationship now, not
-    an embedded Mongo array; immutable once created — no update endpoint)
-    with two creation paths: `FranchiseBillingController` (counter/walk-in
-    sale, staff pick products, paid cash, invoice generated immediately) and
+    an embedded Mongo array; immutable once created — no update endpoint;
+    optional per-bill `discountAmount` — flat or % input resolved to a
+    fixed amount at creation, see `BillingService#applyDiscount` — and
+    free-text `note`, both counter-sale only) with two creation paths:
+    `FranchiseBillingController` (counter/walk-in sale, staff pick
+    products, paid cash, invoice generated immediately, rejects an
+    already-expired product) and
     `PatientOrderController` (online order — rejected outright unless the
     franchise has an active payment gateway configured, per
     `Franchise#hasActivePaymentGateway()`; otherwise `PAYMENT_PENDING`,
@@ -124,28 +132,48 @@ cash; invoices are immutable once generated; frontend never computes money).
     table-based layout only. Verified end-to-end with a real generated PDF
     in `billing/service/InvoicePdfServiceTest` (no Spring context needed
     for that test).
-  - `resources/templates/invoices/` — Thymeleaf templates for
-    appointment/medicine invoices
-  - `resources/templates/notifications/` — email/WhatsApp templates
+  - `lab/` — franchise owner's lab test catalog: individual tests
+    (`LabTest`: name + price) and combo packages (`LabTestCombo`: name +
+    combo price + a `@ManyToMany` bundle of the franchise's own tests) via
+    `/api/franchise/labtests`(`/combos`), plus a patient browse-only mirror
+    at `/api/patient/franchises/{id}/labtests`(`/combos`). Booking:
+    `LabTestBooking` snapshots the item name/price at booking time
+    (mandatory `address` + `mobileNumber`), `PaymentMode` CASH/ONLINE +
+    `OrderStatus` PAYMENT_PENDING/PAID — ONLINE requires
+    `Franchise#hasActivePaymentGateway()`, CASH is confirmed paid by the
+    owner afterward via `PATCH .../bookings/{id}/mark-paid`. No real
+    payment gateway is wired up yet, so both payment modes land in
+    PAYMENT_PENDING for now (same caveat as `billing/`'s online orders).
+  - `consultation/` — franchise owner's doctor visiting-window schedules
+    (`DoctorSchedule`: doctor name/specialization entered directly, no
+    login account; date + start/end time; fee; `SlotType` LIMITED, capped
+    at `maxPatients` with each booking getting the next serial number
+    under a row lock — `DoctorScheduleRepository#findByIdForUpdate`, same
+    pattern as invoice numbering — or REQUEST, an uncapped "call me back"
+    queue) via `/api/franchise/doctors/schedules`, appointments listing +
+    mark-paid via `/api/franchise/doctors/appointments`, patient browse at
+    `/api/patient/franchises/{id}/doctors/schedules` and booking at
+    `/api/patient/doctors/appointments` — same CASH/ONLINE +
+    PAYMENT_PENDING/PAID pattern as `lab/`.
 
-No other feature modules (patient management beyond ordering, doctor
-booking, lab, coupons, payments) are implemented yet — only the package
-scaffold and shared config exist for those areas. When they are built, the
-shop owner operates doctor appointments, delivery, and lab reports directly
-(entering a doctor's name/specialization when creating a slot, marking a
-lab report uploaded, marking a delivery complete) — there are no separate
-Doctor/Lab Technician/Delivery Partner accounts to provision.
+No other feature modules (patient management beyond ordering, coupons,
+payments) are implemented yet — only the package scaffold and shared
+config exist for those areas.
 
 ## Frontend client
 
 - `web/` — the platform's only client. React + TypeScript + Vite, Google
-  OAuth login. One app, two role-gated sections after login: Patient
-  (browse a franchise's catalog, place an online order) and Franchise/shop
-  owner (self-service onboarding, billing incl. print, inventory, invoice
-  branding, payment gateway config). Client-side routing gates by role
-  (`src/auth/RoleRoute.tsx`); the backend's own `/api/franchise/**` /
-  `/api/patient/**` RBAC (`SecurityConfig`) is the real security boundary.
-  See `web/README.md`.
+  OAuth login. One app, two role-gated sections after login: Patient (home
+  page auto-detects the one active franchise via `GET /api/patient/franchises`
+  — no franchise ID ever entered by hand — then order medicine, book a lab
+  test/combo, book a doctor appointment) and Franchise/shop owner (billing
+  incl. print + per-bill discount/note, inventory incl. dashboard insights,
+  lab test catalog + bookings, doctor schedules + appointments, invoice
+  branding, payment gateway config). There is no "become a shop owner" flow
+  anywhere in the client — Franchise accounts don't self-serve, see `auth/`
+  above. Client-side routing gates by role (`src/auth/RoleRoute.tsx`); the
+  backend's own `/api/franchise/**` / `/api/patient/**` RBAC
+  (`SecurityConfig`) is the real security boundary. See `web/README.md`.
 
 `web/` needs `google.oauth.client-id` (backend) and its own Google client ID
 config to match, or OAuth login will fail verification — see the Google

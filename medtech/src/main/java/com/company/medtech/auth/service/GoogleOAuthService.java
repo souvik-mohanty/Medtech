@@ -16,8 +16,8 @@ import java.util.Map;
 /**
  * Google Sign-In is the only login method. A first sign-in with no existing
  * account auto-provisions a PATIENT; the only other role, FRANCHISE (shop
- * owner), is reached by a PATIENT self-onboarding via
- * FranchiseService#onboard — never pre-provisioned.
+ * owner), is never reachable through this flow — those rows are
+ * provisioned directly in Postgres (see CLAUDE.md).
  */
 @Service
 public class GoogleOAuthService {

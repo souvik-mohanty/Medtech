@@ -13,9 +13,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * Created via self-service onboarding — see FranchiseService#onboard, which
- * a Patient calls to become a shop owner. {@code ownerEmail} matches the
- * {@code email} of the UserAuth row whose role was promoted to FRANCHISE.
+ * Provisioned directly in Postgres — there is no self-service or admin
+ * onboarding endpoint (see CLAUDE.md). {@code ownerEmail} matches the
+ * {@code email} of the UserAuth row with {@code role = 'FRANCHISE'}.
  */
 @Entity
 @Table(name = "franchise")
