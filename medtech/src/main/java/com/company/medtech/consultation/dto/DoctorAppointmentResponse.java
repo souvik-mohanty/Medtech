@@ -20,6 +20,9 @@ public class DoctorAppointmentResponse {
     private String patientEmail;
     /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
     private String customerName;
+    /** The name/age the patient entered at online booking time — null for walk-ins (see customerName instead). */
+    private String patientName;
+    private Integer patientAge;
     private String doctorName;
     private String doctorSpecialization;
     private LocalDate scheduleDate;

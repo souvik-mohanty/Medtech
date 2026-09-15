@@ -79,6 +79,10 @@ public class DoctorAppointmentService {
                     "This store hasn't set up online payments yet. Choose cash payment instead.");
         }
 
+        if (doctorAppointmentRepository.existsByScheduleIdAndPatientEmail(scheduleId, patientEmail)) {
+            throw new BusinessException("You already have an appointment booked for this schedule");
+        }
+
         DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
         if (locked.getSlotType() == SlotType.LIMITED && locked.getBookedCount() >= locked.getMaxPatients()) {
@@ -93,6 +97,8 @@ public class DoctorAppointmentService {
         appointment.setFranchiseId(franchise.getId());
         appointment.setScheduleId(schedule.getId());
         appointment.setPatientEmail(patientEmail);
+        appointment.setPatientName(request.getPatientName());
+        appointment.setPatientAge(request.getPatientAge());
         appointment.setSerialNumber(serialNumber);
         appointment.setMobileNumber(request.getMobileNumber());
         appointment.setNote(request.getNote());
@@ -229,6 +235,8 @@ public class DoctorAppointmentService {
                 appointment.getScheduleId().toString(),
                 appointment.getPatientEmail(),
                 appointment.getCustomerName(),
+                appointment.getPatientName(),
+                appointment.getPatientAge(),
                 schedule.getDoctorName(),
                 schedule.getDoctorSpecialization(),
                 schedule.getScheduleDate(),

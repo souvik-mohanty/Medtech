@@ -41,6 +41,8 @@ interface BackendDoctorAppointment {
   scheduleId: string
   patientEmail: string | null
   customerName: string | null
+  patientName: string | null
+  patientAge: number | null
   doctorName: string
   doctorSpecialization: string | null
   scheduleDate: string
@@ -65,6 +67,8 @@ function toDoctorAppointment(a: BackendDoctorAppointment): DoctorAppointment {
     scheduleId: a.scheduleId,
     patientEmail: a.patientEmail ?? undefined,
     customerName: a.customerName ?? undefined,
+    patientName: a.patientName ?? undefined,
+    patientAge: a.patientAge ?? undefined,
     doctorName: a.doctorName,
     doctorSpecialization: a.doctorSpecialization ?? undefined,
     scheduleDate: a.scheduleDate,

@@ -29,6 +29,9 @@ export interface DoctorAppointment {
   patientEmail?: string
   /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
   customerName?: string
+  /** The name/age the patient entered at online booking time — undefined for walk-ins (see customerName instead). */
+  patientName?: string
+  patientAge?: number
   doctorName: string
   doctorSpecialization?: string
   scheduleDate: string
@@ -51,6 +54,8 @@ export interface DoctorAppointment {
 
 export interface BookAppointmentInput {
   scheduleId: string
+  patientName: string
+  patientAge: number
   mobileNumber: string
   note?: string
   paymentMode: "CASH" | "ONLINE"

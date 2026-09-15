@@ -248,8 +248,12 @@ export function OwnerDoctorsPage() {
                     <TableRow key={a.id}>
                       <TableCell className="text-sm font-medium">{a.serialNumber ?? "—"}</TableCell>
                       <TableCell>
-                        <p className="font-medium">{a.patientEmail ?? a.customerName ?? "Walk-in"}</p>
-                        <p className="text-xs text-muted-foreground">{a.mobileNumber}</p>
+                        <p className="font-medium">{a.patientName ?? a.customerName ?? "Walk-in"}</p>
+                        {a.patientEmail && <p className="text-xs text-muted-foreground">{a.patientEmail}</p>}
+                        <p className="text-xs text-muted-foreground">
+                          {a.mobileNumber}
+                          {a.patientAge !== undefined ? ` · ${a.patientAge} yrs` : ""}
+                        </p>
                         {a.note && <p className="text-xs text-muted-foreground">Note: {a.note}</p>}
                       </TableCell>
                       <TableCell>

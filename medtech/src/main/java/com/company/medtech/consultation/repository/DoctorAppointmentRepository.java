@@ -17,4 +17,7 @@ public interface DoctorAppointmentRepository extends JpaRepository<DoctorAppoint
 
     /** How many patients on this schedule have already been seen — used to derive the current FIFO serving number. */
     long countByScheduleIdAndCompletedTrue(UUID scheduleId);
+
+    /** Blocks a patient from booking the same schedule twice online (owner walk-ins are exempt — see bookWalkInAppointment). */
+    boolean existsByScheduleIdAndPatientEmail(UUID scheduleId, String patientEmail);
 }

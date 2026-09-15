@@ -81,6 +81,17 @@ class DoctorAppointmentServiceTest {
     }
 
     @Test
+    void patientCannotBookTheSameScheduleTwice() {
+        DoctorScheduleResponse schedule = doctorScheduleService.create(franchise.getOwnerEmail(), scheduleRequest(SlotType.REQUEST, null));
+        doctorAppointmentService.bookAppointment("p1@example.com", bookingRequest(schedule.getId()));
+
+        DoctorAppointmentRequest secondRequest = bookingRequest(schedule.getId());
+        assertThatThrownBy(() -> doctorAppointmentService.bookAppointment("p1@example.com", secondRequest))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already have an appointment");
+    }
+
+    @Test
     void onlineBookingRejectedWithoutActiveGateway() {
         DoctorScheduleResponse schedule = doctorScheduleService.create(franchise.getOwnerEmail(), scheduleRequest(SlotType.REQUEST, null));
         DoctorAppointmentRequest request = bookingRequest(schedule.getId());
@@ -135,6 +146,8 @@ class DoctorAppointmentServiceTest {
     private DoctorAppointmentRequest bookingRequest(String scheduleId) {
         DoctorAppointmentRequest request = new DoctorAppointmentRequest();
         request.setScheduleId(scheduleId);
+        request.setPatientName("Test Patient");
+        request.setPatientAge(30);
         request.setMobileNumber("9999999999");
         request.setPaymentMode(PaymentMode.CASH);
         return request;

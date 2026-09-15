@@ -30,12 +30,16 @@ export function BookDoctorPage() {
   const hasGateway = !!gatewayConfig?.active
 
   const [target, setTarget] = useState<DoctorSchedule | null>(null)
+  const [patientName, setPatientName] = useState("")
+  const [patientAge, setPatientAge] = useState("")
   const [mobileNumber, setMobileNumber] = useState("")
   const [note, setNote] = useState("")
   const [paymentMode, setPaymentMode] = useState<"CASH" | "ONLINE">("CASH")
 
   function openBooking(schedule: DoctorSchedule) {
     setTarget(schedule)
+    setPatientName("")
+    setPatientAge("")
     setMobileNumber("")
     setNote("")
     setPaymentMode(hasGateway ? "ONLINE" : "CASH")
@@ -45,6 +49,8 @@ export function BookDoctorPage() {
     mutationFn: () =>
       bookAppointment({
         scheduleId: target!.id,
+        patientName: patientName.trim(),
+        patientAge: Number(patientAge),
         mobileNumber,
         note: note || undefined,
         paymentMode: hasGateway ? paymentMode : "CASH",
@@ -127,6 +133,17 @@ export function BookDoctorPage() {
                 {target.scheduleDate} · {formatTime(target.startTime)}–{formatTime(target.endTime)} · {formatCurrency(target.fee)}
               </p>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ap-name">Patient name</Label>
+                  <Input id="ap-name" value={patientName} onChange={(e) => setPatientName(e.target.value)} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ap-age">Age</Label>
+                  <Input id="ap-age" type="number" min={0} max={150} value={patientAge} onChange={(e) => setPatientAge(e.target.value)} required />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="ap-mobile">Mobile number</Label>
                 <Input id="ap-mobile" value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} required />
@@ -167,7 +184,16 @@ export function BookDoctorPage() {
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setTarget(null)}>Cancel</Button>
-                <Button type="submit" disabled={bookMutation.isPending || !mobileNumber.trim()}>
+                <Button
+                  type="submit"
+                  disabled={
+                    bookMutation.isPending ||
+                    !patientName.trim() ||
+                    !patientAge.trim() ||
+                    Number(patientAge) <= 0 ||
+                    !mobileNumber.trim()
+                  }
+                >
                   {bookMutation.isPending && <Loader2 className="size-4 animate-spin" />}
                   {hasGateway && paymentMode === "ONLINE" ? `Pay ${formatCurrency(target.fee)}` : "Confirm booking"}
                 </Button>

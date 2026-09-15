@@ -89,7 +89,7 @@ export function OwnerPaymentsPage() {
     const appointmentRows: PaymentRow[] = (appointments ?? []).map((a) => ({
       id: a.id,
       purpose: "Doctor Appointment",
-      who: a.patientEmail ?? a.customerName ?? "Walk-in",
+      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Walk-in",
       type: a.paymentMode === "CASH" ? "Cash" : "Online",
       amount: a.fee,
       rawStatus: a.status,

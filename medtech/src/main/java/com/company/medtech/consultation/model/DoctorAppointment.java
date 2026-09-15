@@ -38,6 +38,13 @@ public class DoctorAppointment {
     @Column(name = "customer_name")
     private String customerName;
 
+    /** The name entered by the patient at online booking time — mandatory for that path, so the owner isn't left with only an email. */
+    @Column(name = "patient_name")
+    private String patientName;
+
+    @Column(name = "patient_age")
+    private Integer patientAge;
+
     /** Only set for LIMITED schedules. */
     @Column(name = "serial_number")
     private Integer serialNumber;
@@ -110,6 +117,22 @@ public class DoctorAppointment {
 
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
+    }
+
+    public String getPatientName() {
+        return patientName;
+    }
+
+    public void setPatientName(String patientName) {
+        this.patientName = patientName;
+    }
+
+    public Integer getPatientAge() {
+        return patientAge;
+    }
+
+    public void setPatientAge(Integer patientAge) {
+        this.patientAge = patientAge;
     }
 
     public Integer getSerialNumber() {
