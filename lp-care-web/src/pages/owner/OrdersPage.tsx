@@ -45,6 +45,7 @@ export function OwnerOrdersPage() {
               <TableRow>
                 <TableHead>Order</TableHead>
                 <TableHead>Customer</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
@@ -64,16 +65,17 @@ export function OwnerOrdersPage() {
                       {o.patientName ?? o.customerName ?? o.patientEmail}
                       {o.source === "FRANCHISE_COUNTER" && <Badge variant="secondary" className="ml-2 text-[10px]">Counter</Badge>}
                     </p>
-                    {(o.mobileNumber ?? o.customerPhone) && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">{o.mobileNumber ?? o.customerPhone}</p>
-                    )}
+                    {o.referralName && <p className="mt-0.5 text-xs text-muted-foreground">Ref: {o.referralName}</p>}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {(o.mobileNumber ?? o.customerPhone) && <p>{o.mobileNumber ?? o.customerPhone}</p>}
                     {o.addressLine1 && (
-                      <p className="mt-0.5 max-w-xs text-xs text-muted-foreground">
+                      <p className="mt-0.5 max-w-48">
                         {o.addressLabel ? `${o.addressLabel}: ` : ""}
                         {o.addressLine1}{o.addressLine2 ? `, ${o.addressLine2}` : ""}, {o.addressCity}, {o.addressState} – {o.addressPincode}
                       </p>
                     )}
-                    {o.referralName && <p className="mt-0.5 text-xs text-muted-foreground">Ref: {o.referralName}</p>}
+                    {!(o.mobileNumber ?? o.customerPhone) && !o.addressLine1 && "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDateTime(o.createdAt)}</TableCell>
