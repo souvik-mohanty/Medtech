@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { FlaskConical, Plus, ShoppingBag, Stethoscope, Users } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { FlaskConical, Pencil, Plus, ShoppingBag, Stethoscope, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -8,13 +9,16 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { DashboardSectionCard } from "@/components/layouts/DashboardShell"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
+import { ConfirmDialog } from "@/components/common/ConfirmDialog"
 import { WalkInBookingDialog } from "@/components/owner/WalkInBookingDialog"
 import { WalkInMedicinePurchaseDialog } from "@/components/owner/WalkInMedicinePurchaseDialog"
 import { WalkInDoctorAppointmentDialog } from "@/components/owner/WalkInDoctorAppointmentDialog"
-import { getOwnerBookings } from "@/services/api/bookingsApi"
+import { deleteWalkInBooking, getOwnerBookings } from "@/services/api/bookingsApi"
 import { getOwnerOrders } from "@/services/api/ordersApi"
 import { getOwnerAppointments } from "@/services/api/appointmentsApi"
+import { errorMessage } from "@/lib/apiClient"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
+import type { Booking } from "@/types"
 
 interface WalkInRow {
   id: string
@@ -27,9 +31,12 @@ interface WalkInRow {
 }
 
 export function OwnerWalkInPage() {
+  const queryClient = useQueryClient()
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false)
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Booking | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null)
 
   const { data: bookings, isLoading: loadingBookings } = useQuery({ queryKey: ["owner-bookings"], queryFn: () => getOwnerBookings() })
   const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ["owner-orders"], queryFn: getOwnerOrders })
@@ -72,6 +79,17 @@ export function OwnerWalkInPage() {
   }, [bookings, orders, appointments])
 
   const isLoading = loadingBookings || loadingOrders || loadingAppointments
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteWalkInBooking(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
+      queryClient.invalidateQueries({ queryKey: ["owner-collection"] })
+      toast.success("Walk-in booking deleted")
+      setDeleteTarget(null)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
 
   return (
     <div>
@@ -139,21 +157,37 @@ export function OwnerWalkInPage() {
                 <TableHead>Details</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
-                <TableRow key={`${r.kind}-${r.id}`}>
-                  <TableCell><Badge variant="secondary">{r.kind}</Badge></TableCell>
-                  <TableCell className="text-sm">
-                    {r.who}
-                    {r.referralName && <p className="mt-0.5 text-xs text-muted-foreground">Ref: {r.referralName}</p>}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{r.summary}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatDateTime(r.createdAt)}</TableCell>
-                  <TableCell className="text-sm font-medium">{formatCurrency(r.amount)}</TableCell>
-                </TableRow>
-              ))}
+              {rows.map((r) => {
+                const booking = r.kind === "Lab Test" ? bookings?.find((b) => b.id === r.id) : undefined
+                return (
+                  <TableRow key={`${r.kind}-${r.id}`}>
+                    <TableCell><Badge variant="secondary">{r.kind}</Badge></TableCell>
+                    <TableCell className="text-sm">
+                      {r.who}
+                      {r.referralName && <p className="mt-0.5 text-xs text-muted-foreground">Ref: {r.referralName}</p>}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.summary}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDateTime(r.createdAt)}</TableCell>
+                    <TableCell className="text-sm font-medium">{formatCurrency(r.amount)}</TableCell>
+                    <TableCell>
+                      {booking && (
+                        <div className="flex items-center gap-1">
+                          <Button size="icon-sm" variant="ghost" title="Edit booking" onClick={() => setEditTarget(booking)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost" title="Delete booking" onClick={() => setDeleteTarget(booking)}>
+                            <Trash2 className="size-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -162,6 +196,23 @@ export function OwnerWalkInPage() {
       <WalkInBookingDialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen} />
       <WalkInMedicinePurchaseDialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen} />
       <WalkInDoctorAppointmentDialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen} />
+
+      <WalkInBookingDialog
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        editingBooking={editTarget}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this walk-in booking?"
+        description="This permanently removes the booking, its payment record, and any uploaded report. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+      />
     </div>
   )
 }
