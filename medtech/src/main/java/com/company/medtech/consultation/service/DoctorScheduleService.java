@@ -6,6 +6,7 @@ import com.company.medtech.consultation.dto.DoctorScheduleRequest;
 import com.company.medtech.consultation.dto.DoctorScheduleResponse;
 import com.company.medtech.consultation.model.DoctorSchedule;
 import com.company.medtech.consultation.model.SlotType;
+import com.company.medtech.consultation.repository.DoctorAppointmentRepository;
 import com.company.medtech.consultation.repository.DoctorScheduleRepository;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.service.FranchiseService;
@@ -19,10 +20,16 @@ import java.util.UUID;
 public class DoctorScheduleService {
 
     private final DoctorScheduleRepository doctorScheduleRepository;
+    private final DoctorAppointmentRepository doctorAppointmentRepository;
     private final FranchiseService franchiseService;
 
-    public DoctorScheduleService(DoctorScheduleRepository doctorScheduleRepository, FranchiseService franchiseService) {
+    public DoctorScheduleService(
+            DoctorScheduleRepository doctorScheduleRepository,
+            DoctorAppointmentRepository doctorAppointmentRepository,
+            FranchiseService franchiseService
+    ) {
         this.doctorScheduleRepository = doctorScheduleRepository;
+        this.doctorAppointmentRepository = doctorAppointmentRepository;
         this.franchiseService = franchiseService;
     }
 
@@ -78,6 +85,9 @@ public class DoctorScheduleService {
     }
 
     private DoctorScheduleResponse toResponse(DoctorSchedule schedule) {
+        Integer currentServingSerial = schedule.getSlotType() == SlotType.LIMITED
+                ? (int) doctorAppointmentRepository.countByScheduleIdAndCompletedTrue(schedule.getId()) + 1
+                : null;
         return new DoctorScheduleResponse(
                 schedule.getId().toString(),
                 schedule.getDoctorName(),
@@ -88,6 +98,7 @@ public class DoctorScheduleService {
                 schedule.getSlotType(),
                 schedule.getMaxPatients(),
                 schedule.getBookedCount(),
+                currentServingSerial,
                 schedule.getFee(),
                 schedule.isActive()
         );

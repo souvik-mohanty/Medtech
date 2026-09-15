@@ -190,6 +190,23 @@ public class DoctorAppointmentService {
         return toResponseWithSchedule(appointment);
     }
 
+    /** The franchise owner marking a consultation as done, once the doctor has actually seen the patient. */
+    @Transactional
+    public DoctorAppointmentResponse markCompleted(String ownerEmail, String appointmentId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        DoctorAppointment appointment = doctorAppointmentRepository
+                .findByIdAndFranchiseId(parseId(appointmentId, "Appointment"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment", "id", appointmentId));
+
+        if (!appointment.isCompleted()) {
+            appointment.setCompleted(true);
+            appointment.setCompletedAt(LocalDateTime.now());
+            doctorAppointmentRepository.save(appointment);
+        }
+
+        return toResponseWithSchedule(appointment);
+    }
+
     private UUID parseId(String id, String resourceName) {
         try {
             return UUID.fromString(id);
@@ -222,7 +239,9 @@ public class DoctorAppointmentService {
                 appointment.getPaymentMode(),
                 appointment.getStatus(),
                 appointment.getCreatedAt(),
-                appointment.getPaidAt()
+                appointment.getPaidAt(),
+                appointment.isCompleted(),
+                appointment.getCompletedAt()
         );
     }
 }

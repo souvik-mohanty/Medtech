@@ -18,6 +18,7 @@ import {
   createDoctorSchedule,
   getOwnerAppointments,
   getOwnerDoctorSchedules,
+  markAppointmentCompleted,
   markAppointmentPaid,
 } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
@@ -67,6 +68,16 @@ export function OwnerDoctorsPage() {
     onError: (err) => toast.error(errorMessage(err)),
   })
 
+  const markCompletedMutation = useMutation({
+    mutationFn: (id: string) => markAppointmentCompleted(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-doctor-appointments"] })
+      queryClient.invalidateQueries({ queryKey: ["owner-doctor-schedules"] })
+      toast.success("Consultation marked done")
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+
   return (
     <div>
       <PageHeader
@@ -100,6 +111,7 @@ export function OwnerDoctorsPage() {
                     <TableHead>Time</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Booked</TableHead>
+                    <TableHead>Now serving</TableHead>
                     <TableHead>Fee</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -115,6 +127,7 @@ export function OwnerDoctorsPage() {
                       <TableCell className="text-sm text-muted-foreground">{formatTime(s.startTime)} – {formatTime(s.endTime)}</TableCell>
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? "Limited slots" : "Call to arrange"}</TableCell>
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? `${s.bookedCount} / ${s.maxPatients}` : s.bookedCount}</TableCell>
+                      <TableCell className="text-sm">{s.slotType === "LIMITED" ? `#${s.currentServingSerial}` : "—"}</TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(s.fee)}</TableCell>
                       <TableCell>
                         <Badge variant={s.active ? "secondary" : "outline"} className={s.active ? "text-success" : "text-muted-foreground"}>
@@ -146,6 +159,7 @@ export function OwnerDoctorsPage() {
                     <TableHead>Fee</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Consultation</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -168,7 +182,14 @@ export function OwnerDoctorsPage() {
                       <TableCell className="text-sm font-medium">{formatCurrency(a.fee)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{a.paymentMode === "CASH" ? "Cash" : "Online"}</TableCell>
                       <TableCell><StatusBadge status={a.status} /></TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>
+                        {a.completed ? (
+                          <Badge variant="secondary" className="text-success">Done</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="flex justify-end gap-2">
                         {a.status === "PAYMENT_PENDING" && (
                           <Button
                             size="sm"
@@ -181,6 +202,21 @@ export function OwnerDoctorsPage() {
                               <CheckCircle2 className="size-3.5" />
                             )}
                             Mark paid
+                          </Button>
+                        )}
+                        {!a.completed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={markCompletedMutation.isPending && markCompletedMutation.variables === a.id}
+                            onClick={() => markCompletedMutation.mutate(a.id)}
+                          >
+                            {markCompletedMutation.isPending && markCompletedMutation.variables === a.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="size-3.5" />
+                            )}
+                            Mark done
                           </Button>
                         )}
                       </TableCell>

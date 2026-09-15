@@ -9,6 +9,8 @@ import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { getPatientSummaries } from "@/services/api/patientsApi"
 import { getOwnerBookings } from "@/services/api/bookingsApi"
+import { getOwnerOrders } from "@/services/api/ordersApi"
+import { getOwnerAppointments } from "@/services/api/appointmentsApi"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
 export function OwnerPatientDetailPage() {
@@ -20,8 +22,12 @@ export function OwnerPatientDetailPage() {
     queryFn: () => getOwnerBookings({ patientId }),
     enabled: !!patientId,
   })
+  const { data: allOrders, isLoading: loadingOrders } = useQuery({ queryKey: ["owner-orders"], queryFn: getOwnerOrders })
+  const { data: allAppointments, isLoading: loadingAppointments } = useQuery({ queryKey: ["owner-doctor-appointments"], queryFn: getOwnerAppointments })
 
   const patient = patients?.find((p) => p.id === patientId)
+  const orders = (allOrders ?? []).filter((o) => o.patientEmail === patient?.email)
+  const appointments = (allAppointments ?? []).filter((a) => a.patientEmail === patient?.email)
 
   if (loadingPatient) {
     return (
@@ -43,7 +49,7 @@ export function OwnerPatientDetailPage() {
 
   return (
     <div>
-      <PageHeader title={patient.fullName} description="Booking history and contact details." />
+      <PageHeader title={patient.fullName} description="Purchase and appointment history, and contact details." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr]">
         <DashboardSectionCard className="h-fit">
@@ -60,49 +66,127 @@ export function OwnerPatientDetailPage() {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Total bookings</p>
+              <p className="text-muted-foreground">Bookings</p>
               <p className="font-semibold">{patient.totalBookings}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Last booking</p>
-              <p className="font-semibold">{patient.lastBookingDate ? formatDate(patient.lastBookingDate) : "—"}</p>
+              <p className="text-muted-foreground">Orders</p>
+              <p className="font-semibold">{patient.totalOrders}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Appointments</p>
+              <p className="font-semibold">{patient.totalAppointments}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Last activity</p>
+              <p className="font-semibold">{patient.lastActivityDate ? formatDate(patient.lastActivityDate) : "—"}</p>
             </div>
           </div>
         </DashboardSectionCard>
 
-        <DashboardSectionCard>
-          <h2 className="mb-4 font-semibold">Booking history</h2>
-          {loadingBookings ? (
-            <LoadingState rows={3} />
-          ) : !bookings || bookings.length === 0 ? (
-            <EmptyState title="No bookings yet" />
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Booking</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bookings.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell className="font-medium">{b.packageName ?? b.items.map((i) => i.testName).join(", ")}</TableCell>
-                      <TableCell className="text-sm">{formatDate(b.createdAt)}</TableCell>
-                      <TableCell className="text-sm">{formatCurrency(b.totalAmount)}</TableCell>
-                      <TableCell><StatusBadge status={b.paymentStatus} /></TableCell>
-                      <TableCell><StatusBadge status={b.status} /></TableCell>
+        <div className="space-y-5">
+          <DashboardSectionCard>
+            <h2 className="mb-4 font-semibold">Lab booking history</h2>
+            {loadingBookings ? (
+              <LoadingState rows={3} />
+            ) : !bookings || bookings.length === 0 ? (
+              <EmptyState title="No bookings yet" />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Booking</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </DashboardSectionCard>
+                  </TableHeader>
+                  <TableBody>
+                    {bookings.map((b) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-medium">{b.packageName ?? b.items.map((i) => i.testName).join(", ")}</TableCell>
+                        <TableCell className="text-sm">{formatDate(b.createdAt)}</TableCell>
+                        <TableCell className="text-sm">{formatCurrency(b.totalAmount)}</TableCell>
+                        <TableCell><StatusBadge status={b.paymentStatus} /></TableCell>
+                        <TableCell><StatusBadge status={b.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DashboardSectionCard>
+
+          <DashboardSectionCard>
+            <h2 className="mb-4 font-semibold">Medicine order history</h2>
+            {loadingOrders ? (
+              <LoadingState rows={3} />
+            ) : orders.length === 0 ? (
+              <EmptyState title="No orders yet" />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((o) => (
+                      <TableRow key={o.id}>
+                        <TableCell className="font-medium">{o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}</TableCell>
+                        <TableCell className="text-sm">{formatDate(o.createdAt)}</TableCell>
+                        <TableCell className="text-sm">{formatCurrency(o.totalAmount)}</TableCell>
+                        <TableCell><StatusBadge status={o.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DashboardSectionCard>
+
+          <DashboardSectionCard>
+            <h2 className="mb-4 font-semibold">Doctor appointment history</h2>
+            {loadingAppointments ? (
+              <LoadingState rows={3} />
+            ) : appointments.length === 0 ? (
+              <EmptyState title="No appointments yet" />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Doctor</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Fee</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Consultation</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {appointments.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">{a.doctorName}</TableCell>
+                        <TableCell className="text-sm">{formatDate(a.scheduleDate)}</TableCell>
+                        <TableCell className="text-sm">{formatCurrency(a.fee)}</TableCell>
+                        <TableCell><StatusBadge status={a.status} /></TableCell>
+                        <TableCell>
+                          {a.completed ? <StatusBadge status="COMPLETED" /> : <StatusBadge status="PENDING" />}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DashboardSectionCard>
+        </div>
       </div>
     </div>
   )

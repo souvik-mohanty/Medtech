@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Bell, Calendar, ClipboardCheck, CreditCard, FileText, Plus, Truck } from "lucide-react"
+import { Bell, Calendar, ClipboardCheck, CreditCard, FileText, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common/PageHeader"
 import { DashboardSectionCard } from "@/components/layouts/DashboardShell"
@@ -36,11 +36,6 @@ export function PatientDashboardPage() {
       <PageHeader
         title={`Welcome back, ${name.split(" ")[0]}`}
         description="Here's what's happening with your health checkups."
-        actions={
-          <Button asChild>
-            <Link to="/patient/book"><Plus className="size-4" /> Book a Test</Link>
-          </Button>
-        }
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -62,7 +57,7 @@ export function PatientDashboardPage() {
                 <StatusBadge status={upcoming.status} />
               </div>
             ) : (
-              <EmptyState title="No upcoming bookings" description="Book a test to see it here." actionLabel="Book a Test" onAction={() => navigate("/patient/book")} />
+              <EmptyState title="No upcoming bookings" description="Browse tests to start a booking." actionLabel="Browse Tests" onAction={() => navigate("/patient/tests")} />
             )}
           </DashboardSectionCard>
 

@@ -12,6 +12,7 @@ interface BackendDoctorSchedule {
   slotType: SlotType
   maxPatients: number | null
   bookedCount: number
+  currentServingSerial: number | null
   fee: number
   active: boolean
 }
@@ -27,6 +28,7 @@ function toDoctorSchedule(s: BackendDoctorSchedule): DoctorSchedule {
     slotType: s.slotType,
     maxPatients: s.maxPatients ?? undefined,
     bookedCount: s.bookedCount,
+    currentServingSerial: s.currentServingSerial ?? undefined,
     fee: s.fee,
     active: s.active,
   }
@@ -50,6 +52,8 @@ interface BackendDoctorAppointment {
   status: AppointmentStatus
   createdAt: string
   paidAt: string | null
+  completed: boolean
+  completedAt: string | null
 }
 
 function toDoctorAppointment(a: BackendDoctorAppointment): DoctorAppointment {
@@ -71,6 +75,8 @@ function toDoctorAppointment(a: BackendDoctorAppointment): DoctorAppointment {
     status: a.status,
     createdAt: a.createdAt,
     paidAt: a.paidAt ?? undefined,
+    completed: a.completed,
+    completedAt: a.completedAt ?? undefined,
   }
 }
 
@@ -119,5 +125,11 @@ export async function markAppointmentPaid(id: string): Promise<DoctorAppointment
 /** Owner action — books a walk-in patient at the counter against one of their own schedules. Always cash. */
 export async function bookWalkInAppointment(input: WalkInAppointmentInput): Promise<DoctorAppointment> {
   const response = await apiClient.post<{ data: BackendDoctorAppointment }>("/api/franchise/doctors/appointments/walk-in", input)
+  return toDoctorAppointment(response.data.data)
+}
+
+/** Owner action — marks a consultation as done once the doctor has actually seen the patient. */
+export async function markAppointmentCompleted(id: string): Promise<DoctorAppointment> {
+  const response = await apiClient.patch<{ data: BackendDoctorAppointment }>(`/api/franchise/doctors/appointments/${id}/complete`)
   return toDoctorAppointment(response.data.data)
 }

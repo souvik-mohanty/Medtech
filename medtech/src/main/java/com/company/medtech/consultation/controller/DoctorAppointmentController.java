@@ -46,4 +46,9 @@ public class DoctorAppointmentController {
     ) {
         return ApiResponse.success("Appointment booked", doctorAppointmentService.bookWalkInAppointment(authentication.getName(), request));
     }
+
+    @PatchMapping("/{appointmentId}/complete")
+    public ApiResponse<DoctorAppointmentResponse> markCompleted(Authentication authentication, @PathVariable String appointmentId) {
+        return ApiResponse.success("Consultation marked done", doctorAppointmentService.markCompleted(authentication.getName(), appointmentId));
+    }
 }

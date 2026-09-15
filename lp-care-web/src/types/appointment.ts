@@ -13,11 +13,13 @@ export interface DoctorSchedule {
   /** Only meaningful for LIMITED — undefined for REQUEST. */
   maxPatients?: number
   bookedCount: number
+  /** Only meaningful for LIMITED — how many patients have been seen so far, plus one. The FIFO queue position a new booking would join. */
+  currentServingSerial?: number
   fee: number
   active: boolean
 }
 
-export type CreateDoctorScheduleInput = Omit<DoctorSchedule, "id" | "bookedCount" | "active">
+export type CreateDoctorScheduleInput = Omit<DoctorSchedule, "id" | "bookedCount" | "currentServingSerial" | "active">
 
 export interface DoctorAppointment {
   id: string
@@ -39,6 +41,9 @@ export interface DoctorAppointment {
   status: AppointmentStatus
   createdAt: string
   paidAt?: string
+  /** Set by the owner once the doctor has actually seen this patient — independent of payment status. */
+  completed: boolean
+  completedAt?: string
 }
 
 export interface BookAppointmentInput {

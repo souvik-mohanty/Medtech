@@ -33,4 +33,7 @@ public class DoctorAppointmentResponse {
     private OrderStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime paidAt;
+    /** Set by the owner once the doctor has actually seen this patient — independent of payment status. */
+    private boolean completed;
+    private LocalDateTime completedAt;
 }

@@ -15,6 +15,8 @@ public class PatientSummaryResponse {
     private String phone;
     private String email;
     private long totalBookings;
-    private LocalDate lastBookingDate;
+    private long totalOrders;
+    private long totalAppointments;
+    private LocalDate lastActivityDate;
     private String status;
 }

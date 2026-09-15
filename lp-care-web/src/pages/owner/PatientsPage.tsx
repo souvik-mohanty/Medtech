@@ -67,8 +67,10 @@ export function OwnerPatientsPage() {
                   <TableHead>Patient</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Total Bookings</TableHead>
-                  <TableHead>Last Booking</TableHead>
+                  <TableHead>Bookings</TableHead>
+                  <TableHead>Orders</TableHead>
+                  <TableHead>Appointments</TableHead>
+                  <TableHead>Last Activity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -80,7 +82,9 @@ export function OwnerPatientsPage() {
                     <TableCell className="text-sm text-muted-foreground">{p.phone}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.email ?? "—"}</TableCell>
                     <TableCell className="text-sm">{p.totalBookings}</TableCell>
-                    <TableCell className="text-sm">{p.lastBookingDate ? formatDate(p.lastBookingDate) : "—"}</TableCell>
+                    <TableCell className="text-sm">{p.totalOrders}</TableCell>
+                    <TableCell className="text-sm">{p.totalAppointments}</TableCell>
+                    <TableCell className="text-sm">{p.lastActivityDate ? formatDate(p.lastActivityDate) : "—"}</TableCell>
                     <TableCell><StatusBadge status={p.status} /></TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" asChild>

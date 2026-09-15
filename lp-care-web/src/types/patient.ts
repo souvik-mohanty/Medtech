@@ -38,6 +38,8 @@ export interface PatientSummary {
   phone: string
   email?: string
   totalBookings: number
-  lastBookingDate?: string
+  totalOrders: number
+  totalAppointments: number
+  lastActivityDate?: string
   status: "ACTIVE" | "INACTIVE"
 }

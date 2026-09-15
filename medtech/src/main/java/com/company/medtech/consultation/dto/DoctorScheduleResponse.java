@@ -21,6 +21,8 @@ public class DoctorScheduleResponse {
     private SlotType slotType;
     private Integer maxPatients;
     private int bookedCount;
+    /** Only meaningful for LIMITED — how many patients have been seen so far, plus one. FIFO queue position a new booking would join. */
+    private Integer currentServingSerial;
     private BigDecimal fee;
     private boolean active;
 }

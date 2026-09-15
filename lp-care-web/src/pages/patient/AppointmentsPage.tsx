@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { Stethoscope } from "lucide-react"
+import { CheckCircle2, Stethoscope } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common/PageHeader"
 import { DashboardSectionCard } from "@/components/layouts/DashboardShell"
@@ -52,7 +52,13 @@ export function PatientAppointmentsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">{formatCurrency(a.fee)}</span>
-                <StatusBadge status={a.status} />
+                {a.completed ? (
+                  <span className="flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                    <CheckCircle2 className="size-3.5" /> Consultation done
+                  </span>
+                ) : (
+                  <StatusBadge status={a.status} />
+                )}
               </div>
             </DashboardSectionCard>
           ))}

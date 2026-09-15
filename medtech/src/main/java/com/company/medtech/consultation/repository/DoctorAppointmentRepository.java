@@ -14,4 +14,7 @@ public interface DoctorAppointmentRepository extends JpaRepository<DoctorAppoint
     List<DoctorAppointment> findByPatientEmailOrderByCreatedAtDesc(String patientEmail);
 
     Optional<DoctorAppointment> findByIdAndFranchiseId(UUID id, UUID franchiseId);
+
+    /** How many patients on this schedule have already been seen — used to derive the current FIFO serving number. */
+    long countByScheduleIdAndCompletedTrue(UUID scheduleId);
 }

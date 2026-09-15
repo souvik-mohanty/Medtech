@@ -65,6 +65,13 @@ public class DoctorAppointment {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
+    /** Set by the owner once the doctor has actually seen this patient — independent of payment status. */
+    @Column(nullable = false)
+    private boolean completed = false;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     public UUID getId() {
         return id;
     }
@@ -167,5 +174,21 @@ public class DoctorAppointment {
 
     public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
+    }
+
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
     }
 }
