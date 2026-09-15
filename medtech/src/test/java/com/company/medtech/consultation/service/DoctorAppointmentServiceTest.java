@@ -70,14 +70,14 @@ class DoctorAppointmentServiceTest {
     }
 
     @Test
-    void requestScheduleHasNoSerialNumberOrCap() {
+    void requestScheduleGetsSerialNumbersButNoCap() {
         DoctorScheduleResponse schedule = doctorScheduleService.create(franchise.getOwnerEmail(), scheduleRequest(SlotType.REQUEST, null));
 
         DoctorAppointmentResponse first = doctorAppointmentService.bookAppointment("p1@example.com", bookingRequest(schedule.getId()));
         DoctorAppointmentResponse second = doctorAppointmentService.bookAppointment("p2@example.com", bookingRequest(schedule.getId()));
 
-        assertThat(first.getSerialNumber()).isNull();
-        assertThat(second.getSerialNumber()).isNull();
+        assertThat(first.getSerialNumber()).isEqualTo(1);
+        assertThat(second.getSerialNumber()).isEqualTo(2);
     }
 
     @Test

@@ -120,9 +120,8 @@ public class DoctorScheduleService {
     }
 
     private DoctorScheduleResponse toResponse(DoctorSchedule schedule) {
-        Integer currentServingSerial = schedule.getSlotType() == SlotType.LIMITED
-                ? (int) doctorAppointmentRepository.countByScheduleIdAndCompletedTrue(schedule.getId()) + 1
-                : null;
+        // Meaningful for REQUEST too — an unbounded "call to arrange" queue still has a real serving order.
+        int currentServingSerial = (int) doctorAppointmentRepository.countByScheduleIdAndCompletedTrue(schedule.getId()) + 1;
         return new DoctorScheduleResponse(
                 schedule.getId().toString(),
                 schedule.getDoctorName(),

@@ -89,7 +89,7 @@ export function BookDoctorPage() {
                     <Users className="size-3.5" />
                     {s.slotType === "LIMITED" ? `${s.bookedCount} / ${s.maxPatients} booked` : "Call to arrange — no slot limit"}
                   </p>
-                  {s.slotType === "LIMITED" && s.currentServingSerial !== undefined && (
+                  {s.currentServingSerial !== undefined && (
                     <p className="font-medium text-foreground">
                       Now serving #{s.currentServingSerial} — you'd be #{s.bookedCount + 1}
                     </p>

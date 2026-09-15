@@ -175,7 +175,7 @@ export function OwnerDoctorsPage() {
                       <TableCell className="text-sm text-muted-foreground">{formatTime(s.startTime)} – {formatTime(s.endTime)}</TableCell>
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? "Limited slots" : "Call to arrange"}</TableCell>
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? `${s.bookedCount} / ${s.maxPatients}` : s.bookedCount}</TableCell>
-                      <TableCell className="text-sm">{s.slotType === "LIMITED" ? `#${s.currentServingSerial}` : "—"}</TableCell>
+                      <TableCell className="text-sm">#{s.currentServingSerial}</TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(s.fee)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {s.bookingOpensAt ? (

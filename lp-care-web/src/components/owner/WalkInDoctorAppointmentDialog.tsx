@@ -97,9 +97,11 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
                 ))}
               </SelectContent>
             </Select>
-            {selectedSchedule?.slotType === "LIMITED" && (
+            {selectedSchedule && (
               <p className="text-xs text-muted-foreground">
-                {selectedSchedule.bookedCount} / {selectedSchedule.maxPatients} booked — next serial #{selectedSchedule.bookedCount + 1}
+                {selectedSchedule.slotType === "LIMITED"
+                  ? `${selectedSchedule.bookedCount} / ${selectedSchedule.maxPatients} booked — next serial #${selectedSchedule.bookedCount + 1}`
+                  : `${selectedSchedule.bookedCount} booked so far — next serial #${selectedSchedule.bookedCount + 1}`}
               </p>
             )}
           </div>

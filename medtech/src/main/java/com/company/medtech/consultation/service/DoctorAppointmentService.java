@@ -44,10 +44,11 @@ public class DoctorAppointmentService {
     }
 
     /**
-     * LIMITED schedules row-lock (findByIdForUpdate) so two concurrent
-     * bookings can never get the same serial number or push bookedCount
-     * past maxPatients. REQUEST schedules skip the lock entirely — an
-     * unbounded "call me back" queue has nothing to serialize.
+     * Every booking gets a sequential serial number, LIMITED or REQUEST —
+     * a "call to arrange" queue still has a real order of arrival, it just
+     * has no capacity cap. The row lock (findByIdForUpdate) keeps two
+     * concurrent bookings from ever landing on the same serial number;
+     * only LIMITED enforces maxPatients as a hard cap.
      */
     @Transactional
     public DoctorAppointmentResponse bookAppointment(String patientEmail, DoctorAppointmentRequest request) {
@@ -78,18 +79,15 @@ public class DoctorAppointmentService {
                     "This store hasn't set up online payments yet. Choose cash payment instead.");
         }
 
-        Integer serialNumber = null;
-        if (schedule.getSlotType() == SlotType.LIMITED) {
-            DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
-                    .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
-            if (locked.getBookedCount() >= locked.getMaxPatients()) {
-                throw new BusinessException("This session is fully booked");
-            }
-            serialNumber = locked.getBookedCount() + 1;
-            locked.setBookedCount(serialNumber);
-            doctorScheduleRepository.save(locked);
-            schedule = locked;
+        DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
+        if (locked.getSlotType() == SlotType.LIMITED && locked.getBookedCount() >= locked.getMaxPatients()) {
+            throw new BusinessException("This session is fully booked");
         }
+        int serialNumber = locked.getBookedCount() + 1;
+        locked.setBookedCount(serialNumber);
+        doctorScheduleRepository.save(locked);
+        schedule = locked;
 
         DoctorAppointment appointment = new DoctorAppointment();
         appointment.setFranchiseId(franchise.getId());
@@ -128,18 +126,15 @@ public class DoctorAppointmentService {
             throw new BusinessException("This schedule is no longer open for booking");
         }
 
-        Integer serialNumber = null;
-        if (schedule.getSlotType() == SlotType.LIMITED) {
-            DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
-                    .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
-            if (locked.getBookedCount() >= locked.getMaxPatients()) {
-                throw new BusinessException("This session is fully booked");
-            }
-            serialNumber = locked.getBookedCount() + 1;
-            locked.setBookedCount(serialNumber);
-            doctorScheduleRepository.save(locked);
-            schedule = locked;
+        DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
+        if (locked.getSlotType() == SlotType.LIMITED && locked.getBookedCount() >= locked.getMaxPatients()) {
+            throw new BusinessException("This session is fully booked");
         }
+        int serialNumber = locked.getBookedCount() + 1;
+        locked.setBookedCount(serialNumber);
+        doctorScheduleRepository.save(locked);
+        schedule = locked;
 
         String patientEmail = request.getPatientEmail() != null && !request.getPatientEmail().isBlank()
                 ? request.getPatientEmail().trim().toLowerCase()
