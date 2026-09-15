@@ -253,7 +253,7 @@ export function OwnerDoctorsPage() {
                     <TableRow key={a.id}>
                       <TableCell className="text-sm font-medium">{a.serialNumber ?? "—"}</TableCell>
                       <TableCell>
-                        <p className="font-medium">{a.patientName ?? a.customerName ?? "Walk-in"}</p>
+                        <p className="font-medium">{a.patientName ?? a.customerName ?? "Express"}</p>
                         {a.patientEmail && <p className="text-xs text-muted-foreground">{a.patientEmail}</p>}
                         <p className="text-xs text-muted-foreground">
                           {a.mobileNumber}
@@ -263,7 +263,7 @@ export function OwnerDoctorsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={a.customerName ? "outline" : "secondary"} className={a.customerName ? "text-muted-foreground" : "text-primary"}>
-                          {a.customerName ? "Walk-in" : "Online"}
+                          {a.customerName ? "Express" : "Online"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(a.fee)}</TableCell>
@@ -422,7 +422,7 @@ export function OwnerDoctorsPage() {
                 onChange={(e) => setForm({ ...form, bookingOpensAt: e.target.value || undefined })}
               />
               <p className="text-xs text-muted-foreground">
-                Leave blank to let patients book immediately. Otherwise online booking stays closed until this moment (you can still enter walk-ins any time).
+                Leave blank to let patients book immediately. Otherwise online booking stays closed until this moment (you can still enter Express bookings any time).
               </p>
             </div>
 

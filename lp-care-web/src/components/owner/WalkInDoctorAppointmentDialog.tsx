@@ -78,7 +78,7 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
     <Dialog open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next) }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Walk-in doctor appointment</DialogTitle>
+          <DialogTitle>Express doctor appointment</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -139,7 +139,7 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
           <div className="space-y-1.5">
             <Label htmlFor="wa-datetime">Entry date &amp; time</Label>
             <Input id="wa-datetime" type="datetime-local" value={entryDateTime} onChange={(e) => setEntryDateTime(e.target.value)} required />
-            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this walk-in after the fact.</p>
+            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this Express booking after the fact.</p>
           </div>
 
           <div className="space-y-1.5">

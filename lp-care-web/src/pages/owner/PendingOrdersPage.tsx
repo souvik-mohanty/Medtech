@@ -59,7 +59,7 @@ export function OwnerPendingOrdersPage() {
     .map((o) => ({
       kind: "Medicine",
       id: o.id,
-      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Walk-in",
+      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Express",
       summary: `#${o.id} · ${o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}`,
       isWalkIn: o.source === "FRANCHISE_COUNTER",
       totalAmount: o.totalAmount,
@@ -72,7 +72,7 @@ export function OwnerPendingOrdersPage() {
     .map((a) => ({
       kind: "Doctor Appointment",
       id: a.id,
-      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Walk-in",
+      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Express",
       summary: `Dr. ${a.doctorName} · ${a.scheduleDate} ${a.startTime.slice(0, 5)}`,
       isWalkIn: a.customerName != null,
       totalAmount: a.fee,
@@ -131,7 +131,7 @@ export function OwnerPendingOrdersPage() {
 
   return (
     <div>
-      <PageHeader title="Pending Orders" description="How much is still owed and needs settling — lab bookings, medicine orders, and doctor appointments, walk-in or online." />
+      <PageHeader title="Pending Orders" description="How much is still owed and needs settling — lab bookings, medicine orders, and doctor appointments, Express or online." />
 
       {isLoading ? (
         <LoadingState rows={5} />
@@ -148,7 +148,7 @@ export function OwnerPendingOrdersPage() {
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{r.who}</p>
                     <Badge variant="secondary" className="text-[10px]">{r.kind}</Badge>
-                    {r.isWalkIn && <Badge variant="secondary" className="text-[10px]">Walk-in</Badge>}
+                    {r.isWalkIn && <Badge variant="secondary" className="text-[10px]">Express</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">{r.summary}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">

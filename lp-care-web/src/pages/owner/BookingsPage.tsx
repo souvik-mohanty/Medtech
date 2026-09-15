@@ -77,7 +77,7 @@ export function OwnerBookingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
       queryClient.invalidateQueries({ queryKey: ["bookings"] })
-      toast.success("Walk-in booking deleted")
+      toast.success("Express booking deleted")
       setDeleteTarget(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -162,7 +162,7 @@ export function OwnerBookingsPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {b.forFamilyMemberName ?? b.patientName}
-                      {b.source === "FRANCHISE_COUNTER" && <Badge variant="secondary" className="ml-2 text-[10px]">Walk-in</Badge>}
+                      {b.source === "FRANCHISE_COUNTER" && <Badge variant="secondary" className="ml-2 text-[10px]">Express</Badge>}
                       {b.referralName && <p className="mt-0.5 text-xs text-muted-foreground">Ref: {b.referralName}</p>}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -343,7 +343,7 @@ export function OwnerBookingsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete this walk-in booking?"
+        title="Delete this Express booking?"
         description="This permanently removes the booking, its payment record, and any uploaded report. This cannot be undone."
         confirmLabel="Delete"
         destructive

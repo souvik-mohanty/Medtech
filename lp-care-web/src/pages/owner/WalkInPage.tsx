@@ -59,7 +59,7 @@ export function OwnerWalkInPage() {
       .map((o) => ({
         id: o.id,
         kind: "Medicine",
-        who: o.customerName ?? "Walk-in",
+        who: o.customerName ?? "Express",
         summary: o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", "),
         amount: o.totalAmount,
         createdAt: o.createdAt,
@@ -70,7 +70,7 @@ export function OwnerWalkInPage() {
       .map((a) => ({
         id: a.id,
         kind: "Doctor Appointment",
-        who: a.customerName ?? "Walk-in",
+        who: a.customerName ?? "Express",
         summary: `${a.doctorName}${a.serialNumber !== undefined ? ` · Serial #${a.serialNumber}` : ""}`,
         amount: a.fee,
         createdAt: a.createdAt,
@@ -85,7 +85,7 @@ export function OwnerWalkInPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
       queryClient.invalidateQueries({ queryKey: ["owner-collection"] })
-      toast.success("Walk-in booking deleted")
+      toast.success("Express booking deleted")
       setDeleteTarget(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -93,7 +93,7 @@ export function OwnerWalkInPage() {
 
   return (
     <div>
-      <PageHeader title="Express Billing" description="Bill walk-in customers for a lab test or a medicine purchase, right at the counter." />
+      <PageHeader title="Express Billing" description="Bill Express customers for a lab test or a medicine purchase, right at the counter." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DashboardSectionCard className="flex items-center justify-between gap-3">
@@ -103,7 +103,7 @@ export function OwnerWalkInPage() {
             </div>
             <div>
               <p className="font-medium">Lab test booking</p>
-              <p className="text-xs text-muted-foreground">Book a test or package for a walk-in patient.</p>
+              <p className="text-xs text-muted-foreground">Book a test or package for an Express Billing patient.</p>
             </div>
           </div>
           <Button onClick={() => setBookingDialogOpen(true)}>
@@ -133,7 +133,7 @@ export function OwnerWalkInPage() {
             </div>
             <div>
               <p className="font-medium">Doctor appointment</p>
-              <p className="text-xs text-muted-foreground">Book a doctor's schedule for a walk-in patient.</p>
+              <p className="text-xs text-muted-foreground">Book a doctor's schedule for an Express Billing patient.</p>
             </div>
           </div>
           <Button onClick={() => setAppointmentDialogOpen(true)}>
@@ -142,11 +142,11 @@ export function OwnerWalkInPage() {
         </DashboardSectionCard>
       </div>
 
-      <h2 className="mt-8 mb-4 font-semibold">Recent walk-ins</h2>
+      <h2 className="mt-8 mb-4 font-semibold">Recent Express bills</h2>
       {isLoading ? (
         <LoadingState rows={5} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={Users} title="No walk-ins yet" description="Walk-in bookings and purchases will show up here." />
+        <EmptyState icon={Users} title="No Express bills yet" description="Express bookings and purchases will show up here." />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card">
           <Table>
@@ -206,7 +206,7 @@ export function OwnerWalkInPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete this walk-in booking?"
+        title="Delete this Express booking?"
         description="This permanently removes the booking, its payment record, and any uploaded report. This cannot be undone."
         confirmLabel="Delete"
         destructive

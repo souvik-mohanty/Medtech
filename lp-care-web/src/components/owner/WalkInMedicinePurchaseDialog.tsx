@@ -90,7 +90,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
     <Dialog open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next) }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Walk-in medicine purchase</DialogTitle>
+          <DialogTitle>Express medicine purchase</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {

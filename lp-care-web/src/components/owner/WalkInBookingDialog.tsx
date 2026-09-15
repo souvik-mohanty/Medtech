@@ -149,7 +149,7 @@ export function WalkInBookingDialog({ open, onOpenChange, editingBooking }: Walk
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
       queryClient.invalidateQueries({ queryKey: ["owner-collection"] })
-      toast.success(editingBooking ? "Walk-in booking updated" : "Walk-in booking added")
+      toast.success(editingBooking ? "Express booking updated" : "Express booking added")
       reset()
       onOpenChange(false)
     },
@@ -165,7 +165,7 @@ export function WalkInBookingDialog({ open, onOpenChange, editingBooking }: Walk
     <Dialog open={open} onOpenChange={(next) => { if (!next) { reset(); initializedForId.current = null }; onOpenChange(next) }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editingBooking ? "Edit walk-in booking" : "Walk-in booking"}</DialogTitle>
+          <DialogTitle>{editingBooking ? "Edit Express booking" : "Express booking"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -188,7 +188,7 @@ export function WalkInBookingDialog({ open, onOpenChange, editingBooking }: Walk
           <div className="space-y-1.5">
             <Label htmlFor="wi-datetime">Entry date &amp; time</Label>
             <Input id="wi-datetime" type="datetime-local" value={entryDateTime} onChange={(e) => setEntryDateTime(e.target.value)} required />
-            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this walk-in after the fact.</p>
+            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this Express booking after the fact.</p>
           </div>
 
           <div className="space-y-1.5">

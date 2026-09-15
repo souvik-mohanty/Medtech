@@ -78,7 +78,7 @@ export function OwnerPaymentsPage() {
     const orderRows: PaymentRow[] = (orders ?? []).map((o) => ({
       id: o.id,
       purpose: "Medicine Order",
-      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Walk-in",
+      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Express",
       type: o.paymentMode === "CASH" ? "Cash" : "Online",
       amount: o.totalAmount,
       rawStatus: o.status,
@@ -89,7 +89,7 @@ export function OwnerPaymentsPage() {
     const appointmentRows: PaymentRow[] = (appointments ?? []).map((a) => ({
       id: a.id,
       purpose: "Doctor Appointment",
-      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Walk-in",
+      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Express",
       type: a.paymentMode === "CASH" ? "Cash" : "Online",
       amount: a.fee,
       rawStatus: a.status,

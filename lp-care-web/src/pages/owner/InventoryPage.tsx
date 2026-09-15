@@ -50,8 +50,8 @@ function emptyForm(): ProductInput {
 
 const CHANNEL_LABELS: Record<Product["salesChannel"], string> = {
   ONLINE: "Online only",
-  WALKIN: "Walk-in only",
-  BOTH: "Online + Walk-in",
+  WALKIN: "Express only",
+  BOTH: "Online + Express",
 }
 
 export function OwnerInventoryPage() {
@@ -261,12 +261,12 @@ export function OwnerInventoryPage() {
               <Select value={form.salesChannel} onValueChange={(v) => setForm({ ...form, salesChannel: v as Product["salesChannel"] })}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BOTH">Online + Walk-in</SelectItem>
+                  <SelectItem value="BOTH">Online + Express</SelectItem>
                   <SelectItem value="ONLINE">Online only</SelectItem>
-                  <SelectItem value="WALKIN">Walk-in only</SelectItem>
+                  <SelectItem value="WALKIN">Express only</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Controls whether patients see this online, whether it appears in walk-in billing, or both.</p>
+              <p className="text-xs text-muted-foreground">Controls whether patients see this online, whether it appears in Express Billing, or both.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
