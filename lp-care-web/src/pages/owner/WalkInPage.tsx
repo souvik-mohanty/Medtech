@@ -75,7 +75,7 @@ export function OwnerWalkInPage() {
 
   return (
     <div>
-      <PageHeader title="Walk-in Billing" description="Bill walk-in customers for a lab test or a medicine purchase, right at the counter." />
+      <PageHeader title="Express Billing" description="Bill walk-in customers for a lab test or a medicine purchase, right at the counter." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DashboardSectionCard className="flex items-center justify-between gap-3">
