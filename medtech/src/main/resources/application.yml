@@ -1,5 +1,8 @@
 server:
-  port: 8080
+  # Render (and most PaaS hosts) assign the port dynamically via $PORT — the
+  # app must listen on whatever it provides, not a fixed 8080, or the
+  # platform's health check never finds it. Defaults to 8080 for local dev.
+  port: ${PORT:8080}
 
 spring:
   application:
