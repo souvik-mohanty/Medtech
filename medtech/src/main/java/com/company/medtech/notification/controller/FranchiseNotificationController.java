@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,5 +39,19 @@ public class FranchiseNotificationController {
     public ApiResponse<Map<String, Long>> unreadCount(Authentication authentication) {
         Franchise franchise = franchiseService.getByOwnerEmail(authentication.getName());
         return ApiResponse.success("OK", Map.of("count", notificationService.unreadCountForFranchise(franchise.getId())));
+    }
+
+    @PatchMapping("/{id}/read")
+    public ApiResponse<Void> markRead(Authentication authentication, @PathVariable String id) {
+        Franchise franchise = franchiseService.getByOwnerEmail(authentication.getName());
+        notificationService.markReadForFranchise(franchise.getId(), id);
+        return ApiResponse.success("Marked read", null);
+    }
+
+    @PatchMapping("/mark-all-read")
+    public ApiResponse<Void> markAllRead(Authentication authentication) {
+        Franchise franchise = franchiseService.getByOwnerEmail(authentication.getName());
+        notificationService.markAllReadForFranchise(franchise.getId());
+        return ApiResponse.success("Marked all read", null);
     }
 }

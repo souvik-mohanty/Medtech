@@ -95,6 +95,25 @@ public class NotificationService {
         notificationRepository.saveAll(unread);
     }
 
+    @Transactional
+    public void markReadForFranchise(UUID franchiseId, String id) {
+        Notification notification = notificationRepository.findByIdAndFranchiseId(parseId(id), franchiseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", id));
+        notification.setRead(true);
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void markAllReadForFranchise(UUID franchiseId) {
+        List<Notification> unread = notificationRepository.findByFranchiseIdOrderByCreatedAtDesc(franchiseId).stream()
+                .filter(n -> !n.isRead())
+                .toList();
+        for (Notification notification : unread) {
+            notification.setRead(true);
+        }
+        notificationRepository.saveAll(unread);
+    }
+
     private UUID parseId(String id) {
         try {
             return UUID.fromString(id);

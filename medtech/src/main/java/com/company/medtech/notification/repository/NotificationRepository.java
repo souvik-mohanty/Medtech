@@ -15,6 +15,8 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     Optional<Notification> findByIdAndPatientEmail(UUID id, String patientEmail);
 
+    Optional<Notification> findByIdAndFranchiseId(UUID id, UUID franchiseId);
+
     long countByFranchiseIdAndReadFalse(UUID franchiseId);
 
     long countByPatientEmailAndReadFalse(String patientEmail);

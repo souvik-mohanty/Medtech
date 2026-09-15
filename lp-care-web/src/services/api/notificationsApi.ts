@@ -32,3 +32,11 @@ export async function getOwnerUnreadCount(): Promise<number> {
   const response = await apiClient.get<{ data: { count: number } }>("/api/franchise/notifications/unread-count")
   return response.data.data.count
 }
+
+export async function markOwnerNotificationRead(id: string): Promise<void> {
+  await apiClient.patch(`/api/franchise/notifications/${id}/read`)
+}
+
+export async function markAllOwnerNotificationsRead(): Promise<void> {
+  await apiClient.patch("/api/franchise/notifications/mark-all-read")
+}
