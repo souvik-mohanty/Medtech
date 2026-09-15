@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
 import {
-  Bell,
   Calendar,
   CreditCard,
   FileText,
@@ -27,11 +26,18 @@ const navItems: DashboardNavItem[] = [
   { to: "/patient/orders", label: "My Orders", icon: ShoppingBag },
   { to: "/patient/payments", label: "Payments", icon: CreditCard },
   { to: "/patient/reports", label: "Laboratory Reports", icon: FileText },
-  { to: "/patient/notifications", label: "Notifications", icon: Bell },
   { to: "/patient/settings", label: "Settings", icon: Settings },
 ]
 
 export function PatientLayout() {
   const { data: unreadCount } = useQuery({ queryKey: ["notifications", "mine", "unread-count"], queryFn: getMyUnreadCount, refetchInterval: 30000 })
-  return <DashboardShell navItems={navItems} portalLabel="Patient Portal" settingsPath="/patient/settings" unreadNotifications={unreadCount ?? 0} />
+  return (
+    <DashboardShell
+      navItems={navItems}
+      portalLabel="Patient Portal"
+      settingsPath="/patient/settings"
+      notificationsPath="/patient/notifications"
+      unreadNotifications={unreadCount ?? 0}
+    />
+  )
 }

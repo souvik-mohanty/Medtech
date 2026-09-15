@@ -29,6 +29,7 @@ interface DashboardShellProps {
   navItems: DashboardNavItem[]
   portalLabel: string
   settingsPath: string
+  notificationsPath: string
   unreadNotifications?: number
 }
 
@@ -78,7 +79,7 @@ function SidebarContent({ items }: { items: DashboardNavItem[] }) {
   )
 }
 
-export function DashboardShell({ navItems, portalLabel, settingsPath, unreadNotifications = 0 }: DashboardShellProps) {
+export function DashboardShell({ navItems, portalLabel, settingsPath, notificationsPath, unreadNotifications = 0 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const navigate = useNavigate()
@@ -119,7 +120,7 @@ export function DashboardShell({ navItems, portalLabel, settingsPath, unreadNoti
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" className="relative" onClick={() => navigate("notifications")}>
+            <Button variant="ghost" size="icon-sm" className="relative" onClick={() => navigate(notificationsPath)}>
               <Bell className="size-5" />
               {unreadNotifications > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-destructive-foreground">

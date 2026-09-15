@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import {
   BarChart3,
-  Bell,
   Calendar,
   Clock,
   CreditCard,
@@ -34,12 +33,19 @@ const navItems: DashboardNavItem[] = [
   { to: "/owner/referrals", label: "Referral Management", icon: UserPlus },
   { to: "/owner/doctors", label: "Doctor Appointments", icon: Stethoscope },
   { to: "/owner/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/owner/notifications", label: "Notifications", icon: Bell },
   { to: "/owner/settings", label: "Laboratory Settings", icon: Settings },
   { to: "/owner/profile", label: "Profile", icon: User },
 ]
 
 export function OwnerLayout() {
   const { data: unreadCount } = useQuery({ queryKey: ["notifications", "owner", "unread-count"], queryFn: getOwnerUnreadCount, refetchInterval: 30000 })
-  return <DashboardShell navItems={navItems} portalLabel="Owner Dashboard" settingsPath="/owner/profile" unreadNotifications={unreadCount ?? 0} />
+  return (
+    <DashboardShell
+      navItems={navItems}
+      portalLabel="Owner Dashboard"
+      settingsPath="/owner/profile"
+      notificationsPath="/owner/notifications"
+      unreadNotifications={unreadCount ?? 0}
+    />
+  )
 }
