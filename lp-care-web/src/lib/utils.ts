@@ -41,6 +41,18 @@ export function nowForDateTimeInput(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Today as "yyyy-MM-dd", for an <input type="date"> min attribute. */
+export function todayForDateInput(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** True once a schedule's own end time (on its date) is in the past — booking should stop automatically at that point. */
+export function isScheduleEnded(scheduleDate: string, endTime: string): boolean {
+  return new Date(`${scheduleDate}T${endTime}`) < new Date()
+}
+
 /** Simulates network latency for mock API services. */
 export function mockDelay(ms = 500): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))

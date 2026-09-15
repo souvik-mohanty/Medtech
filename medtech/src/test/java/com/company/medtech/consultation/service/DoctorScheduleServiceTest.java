@@ -64,6 +64,16 @@ class DoctorScheduleServiceTest {
     }
 
     @Test
+    void pastDatedScheduleIsRejected() {
+        DoctorScheduleRequest request = scheduleRequest(SlotType.REQUEST, null);
+        request.setScheduleDate(LocalDate.now().minusDays(1));
+
+        assertThatThrownBy(() -> doctorScheduleService.create(franchise.getOwnerEmail(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("cannot be in the past");
+    }
+
+    @Test
     void endTimeBeforeStartTimeIsRejected() {
         DoctorScheduleRequest request = scheduleRequest(SlotType.REQUEST, null);
         request.setStartTime(LocalTime.of(12, 0));

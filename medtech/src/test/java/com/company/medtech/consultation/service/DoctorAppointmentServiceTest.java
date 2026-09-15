@@ -7,6 +7,7 @@ import com.company.medtech.consultation.dto.DoctorAppointmentRequest;
 import com.company.medtech.consultation.dto.DoctorAppointmentResponse;
 import com.company.medtech.consultation.dto.DoctorScheduleRequest;
 import com.company.medtech.consultation.dto.DoctorScheduleResponse;
+import com.company.medtech.consultation.dto.WalkInAppointmentRequest;
 import com.company.medtech.consultation.model.SlotType;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.model.PaymentGatewayConfig;
@@ -89,6 +90,37 @@ class DoctorAppointmentServiceTest {
         assertThatThrownBy(() -> doctorAppointmentService.bookAppointment("p1@example.com", secondRequest))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("already have an appointment");
+    }
+
+    @Test
+    void bookingIsRejectedOnceTheScheduleWindowHasEnded() {
+        DoctorScheduleRequest endedRequest = scheduleRequest(SlotType.REQUEST, null);
+        endedRequest.setScheduleDate(LocalDate.now());
+        endedRequest.setStartTime(LocalTime.MIN);
+        endedRequest.setEndTime(LocalTime.MIN.plusMinutes(1));
+        DoctorScheduleResponse schedule = doctorScheduleService.create(franchise.getOwnerEmail(), endedRequest);
+
+        assertThatThrownBy(() -> doctorAppointmentService.bookAppointment("p1@example.com", bookingRequest(schedule.getId())))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already ended");
+    }
+
+    @Test
+    void walkInBookingIsRejectedOnceTheScheduleWindowHasEnded() {
+        DoctorScheduleRequest endedRequest = scheduleRequest(SlotType.REQUEST, null);
+        endedRequest.setScheduleDate(LocalDate.now());
+        endedRequest.setStartTime(LocalTime.MIN);
+        endedRequest.setEndTime(LocalTime.MIN.plusMinutes(1));
+        DoctorScheduleResponse schedule = doctorScheduleService.create(franchise.getOwnerEmail(), endedRequest);
+
+        WalkInAppointmentRequest walkIn = new WalkInAppointmentRequest();
+        walkIn.setScheduleId(schedule.getId());
+        walkIn.setCustomerName("Walk-in Patient");
+        walkIn.setMobileNumber("9999999999");
+
+        assertThatThrownBy(() -> doctorAppointmentService.bookWalkInAppointment(franchise.getOwnerEmail(), walkIn))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already ended");
     }
 
     @Test

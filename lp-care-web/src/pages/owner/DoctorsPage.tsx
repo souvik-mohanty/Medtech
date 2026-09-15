@@ -24,7 +24,7 @@ import {
   updateDoctorSchedule,
 } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDateTime, isScheduleEnded, todayForDateInput } from "@/lib/utils"
 import type { CreateDoctorScheduleInput, DoctorSchedule, SlotType } from "@/types"
 
 function scheduleLabel(s: { doctorName: string; scheduleDate: string; startTime: string; endTime: string }) {
@@ -165,6 +165,7 @@ export function OwnerDoctorsPage() {
                 <TableBody>
                   {schedules.map((s) => {
                     const opensInFuture = !!s.bookingOpensAt && new Date(s.bookingOpensAt) > new Date()
+                    const ended = isScheduleEnded(s.scheduleDate, s.endTime)
                     return (
                     <TableRow key={s.id}>
                       <TableCell>
@@ -185,16 +186,20 @@ export function OwnerDoctorsPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={s.active ? "secondary" : "outline"} className={s.active ? "text-success" : "text-muted-foreground"}>
-                          {s.active ? "Active" : "Inactive"}
-                        </Badge>
+                        {ended ? (
+                          <Badge variant="outline" className="text-muted-foreground">Ended</Badge>
+                        ) : (
+                          <Badge variant={s.active ? "secondary" : "outline"} className={s.active ? "text-success" : "text-muted-foreground"}>
+                            {s.active ? "Active" : "Inactive"}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="flex justify-end gap-2">
                         <Button size="sm" variant="outline" onClick={() => openEditSchedule(s)}>Edit</Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={toggleScheduleMutation.isPending && toggleScheduleMutation.variables === s.id}
+                          disabled={ended || (toggleScheduleMutation.isPending && toggleScheduleMutation.variables === s.id)}
                           onClick={() => toggleScheduleMutation.mutate(s.id)}
                         >
                           {s.active ? "Stop booking" : "Resume booking"}
@@ -337,7 +342,14 @@ export function OwnerDoctorsPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ds-date">Date</Label>
-                <Input id="ds-date" type="date" value={form.scheduleDate} onChange={(e) => setForm({ ...form, scheduleDate: e.target.value })} required />
+                <Input
+                  id="ds-date"
+                  type="date"
+                  min={editingSchedule ? undefined : todayForDateInput()}
+                  value={form.scheduleDate}
+                  onChange={(e) => setForm({ ...form, scheduleDate: e.target.value })}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ds-start">Start time</Label>

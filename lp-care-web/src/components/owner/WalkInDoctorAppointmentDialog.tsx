@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { bookWalkInAppointment, getOwnerDoctorSchedules } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency, nowForDateTimeInput } from "@/lib/utils"
+import { formatCurrency, isScheduleEnded, nowForDateTimeInput } from "@/lib/utils"
 
 interface WalkInDoctorAppointmentDialogProps {
   open: boolean
@@ -33,7 +33,12 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
   const [paidNow, setPaidNow] = useState(true)
   const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
-  const activeSchedules = (schedules ?? []).filter((s) => s.active && (s.slotType !== "LIMITED" || s.maxPatients === undefined || s.bookedCount < s.maxPatients))
+  const activeSchedules = (schedules ?? []).filter(
+    (s) =>
+      s.active &&
+      !isScheduleEnded(s.scheduleDate, s.endTime) &&
+      (s.slotType !== "LIMITED" || s.maxPatients === undefined || s.bookedCount < s.maxPatients),
+  )
   const selectedSchedule = activeSchedules.find((s) => s.id === scheduleId)
 
   function reset() {

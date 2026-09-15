@@ -13,6 +13,7 @@ import com.company.medtech.franchise.service.FranchiseService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +35,9 @@ public class DoctorScheduleService {
     }
 
     public DoctorScheduleResponse create(String ownerEmail, DoctorScheduleRequest request) {
+        if (request.getScheduleDate().isBefore(LocalDate.now())) {
+            throw new BusinessException("Schedule date cannot be in the past");
+        }
         if (!request.getEndTime().isAfter(request.getStartTime())) {
             throw new BusinessException("End time must be after start time");
         }
@@ -101,12 +105,19 @@ public class DoctorScheduleService {
                 .toList();
     }
 
-    /** Patient-facing — only active, upcoming (today or later) schedules. */
+    /**
+     * Patient-facing — only active, upcoming schedules. The date filter alone lets a
+     * today-dated schedule through even after its end time has passed, so that's
+     * checked here too — the moment a schedule's window ends, it stops being offered
+     * for booking (both online and walk-in — see DoctorAppointmentService).
+     */
     public List<DoctorScheduleResponse> listForFranchise(String franchiseId) {
         UUID id = parseId(franchiseId, "Franchise");
+        LocalDateTime now = LocalDateTime.now();
         return doctorScheduleRepository
                 .findByFranchiseIdAndActiveTrueAndScheduleDateGreaterThanEqualOrderByScheduleDateAscStartTimeAsc(id, LocalDate.now())
                 .stream()
+                .filter(s -> LocalDateTime.of(s.getScheduleDate(), s.getEndTime()).isAfter(now))
                 .map(this::toResponse)
                 .toList();
     }

@@ -61,6 +61,8 @@ public class DoctorAppointmentService {
             throw new BusinessException("This schedule is no longer open for booking");
         }
 
+        assertNotEnded(schedule);
+
         if (schedule.getBookingOpensAt() != null && LocalDateTime.now().isBefore(schedule.getBookingOpensAt())) {
             throw new BusinessException("Booking for this schedule opens at "
                     + schedule.getBookingOpensAt().format(DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")));
@@ -131,6 +133,8 @@ public class DoctorAppointmentService {
         if (!schedule.isActive()) {
             throw new BusinessException("This schedule is no longer open for booking");
         }
+
+        assertNotEnded(schedule);
 
         DoctorSchedule locked = doctorScheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", request.getScheduleId()));
@@ -213,6 +217,14 @@ public class DoctorAppointmentService {
         }
 
         return toResponseWithSchedule(appointment);
+    }
+
+    /** Once a schedule's end time has passed, booking stops automatically — no owner action needed, online or walk-in alike. */
+    private void assertNotEnded(DoctorSchedule schedule) {
+        LocalDateTime scheduleEnd = LocalDateTime.of(schedule.getScheduleDate(), schedule.getEndTime());
+        if (LocalDateTime.now().isAfter(scheduleEnd)) {
+            throw new BusinessException("This schedule's booking window has already ended");
+        }
     }
 
     private UUID parseId(String id, String resourceName) {
