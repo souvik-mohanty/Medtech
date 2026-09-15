@@ -61,10 +61,15 @@ jwt:
 
 # -------------------- CORS --------------------
 # Local dev origin for lp-care-web (Vite, pinned to :5180 in its
-# vite.config.ts — see that file for why it isn't Vite's default :5173).
+# vite.config.ts — see that file for why it isn't Vite's default :5173),
+# plus the live production frontend (Vercel). Every request from the
+# deployed site — including the OAuth login call — is rejected by the
+# browser if its origin isn't listed here, regardless of how Google's own
+# side is configured.
 cors:
   allowed-origins:
     - http://localhost:5180
+    - https://lpcarepathology.vertexcodelabs.in
 
 # -------------------- Google OAuth --------------------
 # Web/Android/iOS OAuth 2.0 client ID from Google Cloud Console. The ID token's
