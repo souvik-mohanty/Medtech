@@ -36,6 +36,7 @@ function toDoctorSchedule(s: BackendDoctorSchedule): DoctorSchedule {
 
 interface BackendDoctorAppointment {
   id: string
+  scheduleId: string
   patientEmail: string | null
   customerName: string | null
   doctorName: string
@@ -59,6 +60,7 @@ interface BackendDoctorAppointment {
 function toDoctorAppointment(a: BackendDoctorAppointment): DoctorAppointment {
   return {
     id: a.id,
+    scheduleId: a.scheduleId,
     patientEmail: a.patientEmail ?? undefined,
     customerName: a.customerName ?? undefined,
     doctorName: a.doctorName,

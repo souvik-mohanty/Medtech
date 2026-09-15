@@ -57,6 +57,7 @@ public class ProductService {
         product.setPurchasePrice(request.getPurchasePrice());
         product.setMfgDate(request.getMfgDate());
         product.setPurchaseDate(request.getPurchaseDate());
+        product.setSupplier(request.getSupplier());
         product.setExpiryDate(request.getExpiryDate());
         product.setStockQuantity(request.getStockQuantity());
         product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
@@ -74,6 +75,7 @@ public class ProductService {
         product.setPurchasePrice(request.getPurchasePrice());
         product.setMfgDate(request.getMfgDate());
         product.setPurchaseDate(request.getPurchaseDate());
+        product.setSupplier(request.getSupplier());
         product.setExpiryDate(request.getExpiryDate());
         product.setStockQuantity(request.getStockQuantity());
         product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
@@ -155,6 +157,7 @@ public class ProductService {
                 product.getPurchasePrice(),
                 product.getMfgDate(),
                 product.getPurchaseDate(),
+                product.getSupplier(),
                 product.getExpiryDate(),
                 product.getStockQuantity(),
                 product.getGstPercentage(),

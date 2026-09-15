@@ -29,6 +29,7 @@ function emptyForm(): ProductInput {
     purchasePrice: undefined,
     mfgDate: undefined,
     purchaseDate: today(),
+    supplier: undefined,
     expiryDate: undefined,
     stockQuantity: 0,
     gstPercentage: 0,
@@ -59,6 +60,7 @@ export function OwnerInventoryPage() {
       purchasePrice: product.purchasePrice,
       mfgDate: product.mfgDate,
       purchaseDate: product.purchaseDate,
+      supplier: product.supplier,
       expiryDate: product.expiryDate,
       stockQuantity: product.stockQuantity,
       gstPercentage: product.gstPercentage,
@@ -112,6 +114,7 @@ export function OwnerInventoryPage() {
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Purchased</TableHead>
+                <TableHead>Supplier</TableHead>
                 <TableHead>Expiry</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
@@ -132,6 +135,7 @@ export function OwnerInventoryPage() {
                     <span className={p.stockQuantity <= 0 ? "text-destructive" : ""}>{p.stockQuantity}</span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.purchaseDate ? formatDate(p.purchaseDate) : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{p.supplier || "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.expiryDate ? formatDate(p.expiryDate) : "—"}</TableCell>
                   <TableCell>
                     <Badge variant={p.active ? "secondary" : "outline"}>{p.active ? "Active" : "Inactive"}</Badge>
@@ -185,11 +189,17 @@ export function OwnerInventoryPage() {
               <Label htmlFor="p-stock">Stock quantity</Label>
               <Input id="p-stock" type="number" min={0} value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: Number(e.target.value) })} required />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="p-purchase">Purchase date</Label>
                 <Input id="p-purchase" type="date" value={form.purchaseDate ?? ""} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value || undefined })} />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="p-supplier">Supplier (optional)</Label>
+                <Input id="p-supplier" placeholder="e.g. Apex Pharma Distributors" value={form.supplier ?? ""} onChange={(e) => setForm({ ...form, supplier: e.target.value || undefined })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="p-mfg">Mfg date (optional)</Label>
                 <Input id="p-mfg" type="date" value={form.mfgDate ?? ""} onChange={(e) => setForm({ ...form, mfgDate: e.target.value || undefined })} />

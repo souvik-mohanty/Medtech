@@ -25,6 +25,10 @@ import { errorMessage } from "@/lib/apiClient"
 import { formatCurrency } from "@/lib/utils"
 import type { CreateDoctorScheduleInput, SlotType } from "@/types"
 
+function scheduleLabel(s: { doctorName: string; scheduleDate: string; startTime: string; endTime: string }) {
+  return `${s.doctorName} — ${s.scheduleDate} ${formatTime(s.startTime)}–${formatTime(s.endTime)}`
+}
+
 const emptyForm: CreateDoctorScheduleInput = {
   doctorName: "",
   doctorSpecialization: "",
@@ -47,6 +51,11 @@ export function OwnerDoctorsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState<CreateDoctorScheduleInput>(emptyForm)
+  const [selectedScheduleId, setSelectedScheduleId] = useState("")
+
+  const scheduleAppointments = (appointments ?? [])
+    .filter((a) => a.scheduleId === selectedScheduleId)
+    .sort((a, b) => (a.serialNumber ?? Number.MAX_SAFE_INTEGER) - (b.serialNumber ?? Number.MAX_SAFE_INTEGER))
 
   const createMutation = useMutation({
     mutationFn: () => createDoctorSchedule(form),
@@ -143,19 +152,32 @@ export function OwnerDoctorsPage() {
         </TabsContent>
 
         <TabsContent value="appointments">
-          {loadingAppointments ? (
+          <div className="mb-4 space-y-1.5">
+            <Label>Doctor &amp; time</Label>
+            <Select value={selectedScheduleId} onValueChange={setSelectedScheduleId}>
+              <SelectTrigger className="w-full sm:w-96"><SelectValue placeholder="Select a doctor and time to view its appointment list" /></SelectTrigger>
+              <SelectContent>
+                {(schedules ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{scheduleLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {loadingAppointments || loadingSchedules ? (
             <LoadingState rows={5} />
-          ) : !appointments || appointments.length === 0 ? (
-            <EmptyState icon={UserRound} title="No appointments yet" description="Bookings against your schedules will show up here." />
+          ) : !selectedScheduleId ? (
+            <EmptyState icon={UserRound} title="Select a doctor and time" description="Pick a schedule above to see its appointment list, in serial order." />
+          ) : scheduleAppointments.length === 0 ? (
+            <EmptyState icon={UserRound} title="No appointments yet" description="Bookings against this schedule will show up here." />
           ) : (
             <div className="overflow-x-auto rounded-xl border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Doctor</TableHead>
-                    <TableHead>Date</TableHead>
                     <TableHead>Serial</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Fee</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
@@ -164,21 +186,19 @@ export function OwnerDoctorsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {appointments.map((a) => (
+                  {scheduleAppointments.map((a) => (
                     <TableRow key={a.id}>
+                      <TableCell className="text-sm font-medium">{a.serialNumber ?? "—"}</TableCell>
                       <TableCell>
                         <p className="font-medium">{a.patientEmail ?? a.customerName ?? "Walk-in"}</p>
                         <p className="text-xs text-muted-foreground">{a.mobileNumber}</p>
                         {a.note && <p className="text-xs text-muted-foreground">Note: {a.note}</p>}
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {a.doctorName}
-                        {a.doctorSpecialization && <p className="text-xs text-muted-foreground">{a.doctorSpecialization}</p>}
+                      <TableCell>
+                        <Badge variant={a.customerName ? "outline" : "secondary"} className={a.customerName ? "text-muted-foreground" : "text-primary"}>
+                          {a.customerName ? "Walk-in" : "Online"}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {a.scheduleDate} · {formatTime(a.startTime)}–{formatTime(a.endTime)}
-                      </TableCell>
-                      <TableCell className="text-sm">{a.serialNumber ?? "—"}</TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(a.fee)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{a.paymentMode === "CASH" ? "Cash" : "Online"}</TableCell>
                       <TableCell><StatusBadge status={a.status} /></TableCell>

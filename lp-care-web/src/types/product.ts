@@ -8,6 +8,8 @@ export interface Product {
   purchasePrice?: number
   mfgDate?: string
   purchaseDate?: string
+  /** Who this stock was bought from. Optional. */
+  supplier?: string
   expiryDate?: string
   stockQuantity: number
   gstPercentage: number

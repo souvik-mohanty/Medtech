@@ -9,6 +9,7 @@ interface BackendProduct {
   purchasePrice: number | null
   mfgDate: string | null
   purchaseDate: string | null
+  supplier: string | null
   expiryDate: string | null
   stockQuantity: number
   gstPercentage: number
@@ -25,6 +26,7 @@ function toProduct(p: BackendProduct): Product {
     purchasePrice: p.purchasePrice ?? undefined,
     mfgDate: p.mfgDate ?? undefined,
     purchaseDate: p.purchaseDate ?? undefined,
+    supplier: p.supplier ?? undefined,
     expiryDate: p.expiryDate ?? undefined,
     stockQuantity: p.stockQuantity,
     gstPercentage: p.gstPercentage,

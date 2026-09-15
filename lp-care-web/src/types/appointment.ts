@@ -23,6 +23,7 @@ export type CreateDoctorScheduleInput = Omit<DoctorSchedule, "id" | "bookedCount
 
 export interface DoctorAppointment {
   id: string
+  scheduleId: string
   patientEmail?: string
   /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
   customerName?: string

@@ -224,6 +224,7 @@ public class DoctorAppointmentService {
     private DoctorAppointmentResponse toResponse(DoctorAppointment appointment, DoctorSchedule schedule) {
         return new DoctorAppointmentResponse(
                 appointment.getId().toString(),
+                appointment.getScheduleId().toString(),
                 appointment.getPatientEmail(),
                 appointment.getCustomerName(),
                 schedule.getDoctorName(),

@@ -16,6 +16,7 @@ import java.time.LocalTime;
 public class DoctorAppointmentResponse {
 
     private String id;
+    private String scheduleId;
     private String patientEmail;
     /** Only set on an owner-entered walk-in appointment with no linked patient account yet. */
     private String customerName;

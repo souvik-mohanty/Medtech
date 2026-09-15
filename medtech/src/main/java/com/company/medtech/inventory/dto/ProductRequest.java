@@ -30,6 +30,9 @@ public class ProductRequest {
     /** Defaults to today client-side; the shop owner can change it. */
     private LocalDate purchaseDate;
 
+    /** Optional — who this stock was bought from. */
+    private String supplier;
+
     /** Optional — powers the dashboard's expiring-soon/expired insight. */
     private LocalDate expiryDate;
 

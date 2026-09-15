@@ -42,6 +42,9 @@ public class Product {
     @Column(name = "purchase_date")
     private LocalDate purchaseDate;
 
+    /** Who this stock was bought from — free text. Optional. */
+    private String supplier;
+
     /** Optional — see ProductService#getInsights for expiring-soon/expired bucketing. */
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
@@ -121,6 +124,14 @@ public class Product {
 
     public void setPurchaseDate(LocalDate purchaseDate) {
         this.purchaseDate = purchaseDate;
+    }
+
+    public String getSupplier() {
+        return supplier;
+    }
+
+    public void setSupplier(String supplier) {
+        this.supplier = supplier;
     }
 
     public LocalDate getExpiryDate() {
