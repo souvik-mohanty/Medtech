@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { bookWalkInAppointment, getOwnerDoctorSchedules } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, nowForDateTimeInput } from "@/lib/utils"
 
 interface WalkInDoctorAppointmentDialogProps {
   open: boolean
@@ -31,6 +31,7 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
   const [patientEmail, setPatientEmail] = useState("")
   const [note, setNote] = useState("")
   const [paidNow, setPaidNow] = useState(true)
+  const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
   const activeSchedules = (schedules ?? []).filter((s) => s.active && (s.slotType !== "LIMITED" || s.maxPatients === undefined || s.bookedCount < s.maxPatients))
   const selectedSchedule = activeSchedules.find((s) => s.id === scheduleId)
@@ -42,6 +43,7 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
     setPatientEmail("")
     setNote("")
     setPaidNow(true)
+    setEntryDateTime(nowForDateTimeInput())
   }
 
   const mutation = useMutation({
@@ -53,6 +55,7 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
         patientEmail: patientEmail || undefined,
         note: note || undefined,
         paidNow,
+        createdAt: entryDateTime || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-doctor-schedules"] })
@@ -124,6 +127,12 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
             <p className="text-xs text-muted-foreground">
               If given, this appointment will show up once the patient logs in with this email.
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="wa-datetime">Entry date &amp; time</Label>
+            <Input id="wa-datetime" type="datetime-local" value={entryDateTime} onChange={(e) => setEntryDateTime(e.target.value)} required />
+            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this walk-in after the fact.</p>
           </div>
 
           <div className="space-y-1.5">

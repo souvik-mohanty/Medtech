@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,6 +58,11 @@ public class DoctorAppointmentService {
 
         if (!schedule.isActive()) {
             throw new BusinessException("This schedule is no longer open for booking");
+        }
+
+        if (schedule.getBookingOpensAt() != null && LocalDateTime.now().isBefore(schedule.getBookingOpensAt())) {
+            throw new BusinessException("Booking for this schedule opens at "
+                    + schedule.getBookingOpensAt().format(DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")));
         }
 
         UUID franchiseId = schedule.getFranchiseId();
@@ -149,7 +155,8 @@ public class DoctorAppointmentService {
         appointment.setNote(request.getNote());
         appointment.setFee(schedule.getFee());
         appointment.setPaymentMode(PaymentMode.CASH);
-        LocalDateTime now = LocalDateTime.now();
+        // Lets the owner backdate a walk-in entered after the fact (e.g. catching up paper records at day's end).
+        LocalDateTime now = request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now();
         appointment.setStatus(request.isPaidNow() ? OrderStatus.PAID : OrderStatus.PAYMENT_PENDING);
         appointment.setCreatedAt(now);
         appointment.setPaidAt(request.isPaidNow() ? now : null);

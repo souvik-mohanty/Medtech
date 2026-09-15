@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -33,4 +34,7 @@ public class CreateCounterBillRequest {
 
     /** Optional — the doctor or other person who referred this customer in. */
     private String referralId;
+
+    /** Optional — lets the owner backdate a walk-in sale entered after the fact. Defaults to now if omitted. */
+    private LocalDateTime createdAt;
 }

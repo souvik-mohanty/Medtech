@@ -17,6 +17,8 @@ export interface DoctorSchedule {
   currentServingSerial?: number
   fee: number
   active: boolean
+  /** Null/undefined = bookable immediately. Otherwise patients can't book until this moment. */
+  bookingOpensAt?: string
 }
 
 export type CreateDoctorScheduleInput = Omit<DoctorSchedule, "id" | "bookedCount" | "currentServingSerial" | "active">
@@ -63,4 +65,6 @@ export interface WalkInAppointmentInput {
   note?: string
   /** Whether the fee was collected right now (true) or is still owed (false, confirmed later via mark-paid). */
   paidNow: boolean
+  /** Optional — lets the owner backdate a walk-in entered after the fact. Defaults to now if omitted. */
+  createdAt?: string
 }

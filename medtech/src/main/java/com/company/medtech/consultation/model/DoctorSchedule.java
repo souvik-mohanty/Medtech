@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
 
@@ -62,6 +63,10 @@ public class DoctorSchedule {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    /** Null = bookable immediately. Otherwise patients can't book until this moment — gates DoctorAppointmentService#bookAppointment only, not owner walk-ins. */
+    @Column(name = "booking_opens_at")
+    private LocalDateTime bookingOpensAt;
 
     public UUID getId() {
         return id;
@@ -157,5 +162,13 @@ public class DoctorSchedule {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public LocalDateTime getBookingOpensAt() {
+        return bookingOpensAt;
+    }
+
+    public void setBookingOpensAt(LocalDateTime bookingOpensAt) {
+        this.bookingOpensAt = bookingOpensAt;
     }
 }

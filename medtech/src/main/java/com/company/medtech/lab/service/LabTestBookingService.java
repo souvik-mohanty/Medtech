@@ -293,7 +293,8 @@ public class LabTestBookingService {
         BigDecimal subtotal = items.stream().map(LabTestBookingItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal gst = subtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalAmount = subtotal.add(gst);
-        LocalDateTime now = LocalDateTime.now();
+        // Lets the owner backdate a walk-in entered after the fact (e.g. catching up paper records at day's end).
+        LocalDateTime now = request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now();
 
         BigDecimal amountPaid = request.getAmountPaid() != null ? request.getAmountPaid() : BigDecimal.ZERO;
         if (amountPaid.compareTo(totalAmount) > 0) {

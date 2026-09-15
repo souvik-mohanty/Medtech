@@ -13,7 +13,7 @@ import { createWalkInBooking } from "@/services/api/bookingsApi"
 import { getReferrals } from "@/services/api/referralsApi"
 import { getCoupons } from "@/services/api/couponsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, nowForDateTimeInput } from "@/lib/utils"
 
 type PaymentChoice = "PENDING" | "PARTIAL" | "FULL"
 
@@ -39,6 +39,7 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
   const [partialAmount, setPartialAmount] = useState("")
   const [referralId, setReferralId] = useState<string>("")
   const [couponId, setCouponId] = useState<string>("")
+  const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
   const activeTests = (tests ?? []).filter((t) => t.active)
   const activePackages = (packages ?? []).filter((p) => p.active)
@@ -64,6 +65,7 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
     setPartialAmount("")
     setReferralId("")
     setCouponId("")
+    setEntryDateTime(nowForDateTimeInput())
   }
 
   function toggleTest(id: string) {
@@ -87,6 +89,7 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
           paymentChoice === "FULL" ? Number.MAX_SAFE_INTEGER : paymentChoice === "PARTIAL" ? Number(partialAmount) || 0 : 0,
         referralId: referralId || undefined,
         couponCode: selectedCoupon?.code,
+        createdAt: entryDateTime || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
@@ -125,6 +128,12 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
               <Label htmlFor="wi-phone">Phone (optional)</Label>
               <Input id="wi-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="wi-datetime">Entry date &amp; time</Label>
+            <Input id="wi-datetime" type="datetime-local" value={entryDateTime} onChange={(e) => setEntryDateTime(e.target.value)} required />
+            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this walk-in after the fact.</p>
           </div>
 
           <div className="space-y-1.5">

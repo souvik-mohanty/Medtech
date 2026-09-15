@@ -15,6 +15,7 @@ interface BackendDoctorSchedule {
   currentServingSerial: number | null
   fee: number
   active: boolean
+  bookingOpensAt: string | null
 }
 
 function toDoctorSchedule(s: BackendDoctorSchedule): DoctorSchedule {
@@ -31,6 +32,7 @@ function toDoctorSchedule(s: BackendDoctorSchedule): DoctorSchedule {
     currentServingSerial: s.currentServingSerial ?? undefined,
     fee: s.fee,
     active: s.active,
+    bookingOpensAt: s.bookingOpensAt ?? undefined,
   }
 }
 
@@ -110,6 +112,17 @@ export async function getOwnerDoctorSchedules(): Promise<DoctorSchedule[]> {
 
 export async function createDoctorSchedule(input: CreateDoctorScheduleInput): Promise<DoctorSchedule> {
   const response = await apiClient.post<{ data: BackendDoctorSchedule }>("/api/franchise/doctors/schedules", input)
+  return toDoctorSchedule(response.data.data)
+}
+
+export async function updateDoctorSchedule(id: string, input: CreateDoctorScheduleInput): Promise<DoctorSchedule> {
+  const response = await apiClient.put<{ data: BackendDoctorSchedule }>(`/api/franchise/doctors/schedules/${id}`, input)
+  return toDoctorSchedule(response.data.data)
+}
+
+/** Owner action — stops (or resumes) new bookings against this schedule without deleting it. */
+export async function toggleDoctorScheduleActive(id: string): Promise<DoctorSchedule> {
+  const response = await apiClient.patch<{ data: BackendDoctorSchedule }>(`/api/franchise/doctors/schedules/${id}/toggle-active`)
   return toDoctorSchedule(response.data.data)
 }
 

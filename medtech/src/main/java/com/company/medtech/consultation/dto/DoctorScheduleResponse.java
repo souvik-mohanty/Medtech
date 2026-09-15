@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -25,4 +26,6 @@ public class DoctorScheduleResponse {
     private Integer currentServingSerial;
     private BigDecimal fee;
     private boolean active;
+    /** Null = bookable immediately. Otherwise patients can't book until this moment. */
+    private LocalDateTime bookingOpensAt;
 }

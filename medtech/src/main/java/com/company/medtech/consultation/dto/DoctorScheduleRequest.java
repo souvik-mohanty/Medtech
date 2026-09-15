@@ -9,6 +9,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /** maxPatients is required (and must be > 0) only when slotType is LIMITED — validated in the service. */
@@ -38,4 +39,7 @@ public class DoctorScheduleRequest {
     @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal fee;
+
+    /** Optional — patients can't book until this moment. Null = bookable immediately. */
+    private LocalDateTime bookingOpensAt;
 }

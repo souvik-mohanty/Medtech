@@ -189,6 +189,8 @@ export interface CreateWalkInBookingInput {
   /** How much the customer is paying right now. Omit/0 = pending, less than the total = partially paid, at/above = fully paid. */
   amountPaid?: number
   referralId?: string
+  /** Optional — lets the owner backdate a walk-in entered after the fact. Defaults to now if omitted. */
+  createdAt?: string
 }
 
 /** Owner action — books a walk-in patient at the counter. Always LAB_VISIT, marked collected immediately. */
@@ -202,6 +204,7 @@ export async function createWalkInBooking(input: CreateWalkInBookingInput): Prom
     couponCode: input.couponCode,
     amountPaid: input.amountPaid,
     referralId: input.referralId,
+    createdAt: input.createdAt,
   })
   return toBooking(response.data.data)
 }

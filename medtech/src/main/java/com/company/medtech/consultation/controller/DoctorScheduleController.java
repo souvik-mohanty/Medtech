@@ -9,7 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,5 +41,19 @@ public class DoctorScheduleController {
             @Valid @RequestBody DoctorScheduleRequest request
     ) {
         return ApiResponse.success("Schedule added", doctorScheduleService.create(authentication.getName(), request));
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<DoctorScheduleResponse> update(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody DoctorScheduleRequest request
+    ) {
+        return ApiResponse.success("Schedule updated", doctorScheduleService.update(authentication.getName(), id, request));
+    }
+
+    @PatchMapping("/{id}/toggle-active")
+    public ApiResponse<DoctorScheduleResponse> toggleActive(Authentication authentication, @PathVariable String id) {
+        return ApiResponse.success("Schedule updated", doctorScheduleService.toggleActive(authentication.getName(), id));
     }
 }

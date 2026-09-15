@@ -12,7 +12,7 @@ import { createCounterBill } from "@/services/api/ordersApi"
 import { getCoupons } from "@/services/api/couponsApi"
 import { getReferrals } from "@/services/api/referralsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, nowForDateTimeInput } from "@/lib/utils"
 
 interface WalkInMedicinePurchaseDialogProps {
   open: boolean
@@ -30,6 +30,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [couponId, setCouponId] = useState("")
   const [referralId, setReferralId] = useState("")
+  const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
   const activeProducts = (products ?? []).filter((p) => p.active)
   const now = new Date()
@@ -54,6 +55,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
     setQuantities({})
     setCouponId("")
     setReferralId("")
+    setEntryDateTime(nowForDateTimeInput())
   }
 
   function setQuantity(productId: string, qty: number) {
@@ -70,6 +72,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
         discountValue: selectedCoupon?.value,
         couponCode: selectedCoupon?.code,
         referralId: referralId || undefined,
+        createdAt: entryDateTime || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-orders"] })
@@ -105,6 +108,12 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
               <Label htmlFor="wm-phone">Phone (optional)</Label>
               <Input id="wm-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="wm-datetime">Entry date &amp; time</Label>
+            <Input id="wm-datetime" type="datetime-local" value={entryDateTime} onChange={(e) => setEntryDateTime(e.target.value)} required />
+            <p className="text-xs text-muted-foreground">Defaults to now — change it if you're entering this sale after the fact.</p>
           </div>
 
           <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">

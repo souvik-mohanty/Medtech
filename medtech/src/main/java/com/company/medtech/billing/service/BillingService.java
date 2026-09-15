@@ -102,10 +102,12 @@ public class BillingService {
         bill.setCouponCode(request.getDiscountValue() != null ? request.getCouponCode() : null);
         bill.setNote(request.getNote());
 
+        // Lets the owner backdate a walk-in sale entered after the fact (e.g. catching up paper records at day's end).
+        LocalDateTime now = request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now();
         bill.setPaymentMode(PaymentMode.CASH);
         bill.setStatus(OrderStatus.PAID);
-        bill.setCreatedAt(LocalDateTime.now());
-        bill.setPaidAt(LocalDateTime.now());
+        bill.setCreatedAt(now);
+        bill.setPaidAt(now);
         bill.setInvoiceNumber(nextInvoiceNumber(franchise.getId()));
         applyReferral(bill, franchise.getId(), request.getReferralId());
 

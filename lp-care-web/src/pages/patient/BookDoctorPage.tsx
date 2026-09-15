@@ -16,7 +16,7 @@ import { ErrorState } from "@/components/common/ErrorState"
 import { bookAppointment, getDoctorSchedules } from "@/services/api/appointmentsApi"
 import { getPaymentGatewayConfig } from "@/services/api/paymentGatewayApi"
 import { errorMessage } from "@/lib/apiClient"
-import { cn, formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils"
 import type { DoctorSchedule } from "@/types"
 
 function formatTime(value: string) {
@@ -71,6 +71,7 @@ export function BookDoctorPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {schedules.map((s) => {
             const full = s.slotType === "LIMITED" && s.maxPatients !== undefined && s.bookedCount >= s.maxPatients
+            const notYetOpen = !!s.bookingOpensAt && new Date(s.bookingOpensAt) > new Date()
             return (
               <DashboardSectionCard key={s.id} className="flex flex-col gap-3">
                 <div className="flex items-start gap-3">
@@ -93,11 +94,14 @@ export function BookDoctorPage() {
                       Now serving #{s.currentServingSerial} — you'd be #{s.bookedCount + 1}
                     </p>
                   )}
+                  {notYetOpen && (
+                    <p className="font-medium text-warning-foreground">Booking opens {formatDateTime(s.bookingOpensAt!)}</p>
+                  )}
                 </div>
                 <div className="mt-auto flex items-center justify-between pt-2">
                   <span className="text-lg font-bold">{formatCurrency(s.fee)}</span>
-                  <Button size="sm" disabled={full} onClick={() => openBooking(s)}>
-                    {full ? "Fully booked" : "Book"}
+                  <Button size="sm" disabled={full || notYetOpen} onClick={() => openBooking(s)}>
+                    {full ? "Fully booked" : notYetOpen ? "Not open yet" : "Book"}
                   </Button>
                 </div>
               </DashboardSectionCard>

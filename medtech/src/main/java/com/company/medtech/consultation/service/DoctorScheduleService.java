@@ -54,7 +54,42 @@ public class DoctorScheduleService {
         schedule.setMaxPatients(request.getSlotType() == SlotType.LIMITED ? request.getMaxPatients() : null);
         schedule.setFee(request.getFee());
         schedule.setActive(true);
+        schedule.setBookingOpensAt(request.getBookingOpensAt());
 
+        return toResponse(doctorScheduleRepository.save(schedule));
+    }
+
+    public DoctorScheduleResponse update(String ownerEmail, String scheduleId, DoctorScheduleRequest request) {
+        if (!request.getEndTime().isAfter(request.getStartTime())) {
+            throw new BusinessException("End time must be after start time");
+        }
+        if (request.getSlotType() == SlotType.LIMITED && (request.getMaxPatients() == null || request.getMaxPatients() < 1)) {
+            throw new BusinessException("Limited schedules need a maximum patient count");
+        }
+
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        DoctorSchedule schedule = doctorScheduleRepository.findByIdAndFranchiseId(parseId(scheduleId, "DoctorSchedule"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", scheduleId));
+
+        schedule.setDoctorName(request.getDoctorName());
+        schedule.setDoctorSpecialization(request.getDoctorSpecialization());
+        schedule.setScheduleDate(request.getScheduleDate());
+        schedule.setStartTime(request.getStartTime());
+        schedule.setEndTime(request.getEndTime());
+        schedule.setSlotType(request.getSlotType());
+        schedule.setMaxPatients(request.getSlotType() == SlotType.LIMITED ? request.getMaxPatients() : null);
+        schedule.setFee(request.getFee());
+        schedule.setBookingOpensAt(request.getBookingOpensAt());
+
+        return toResponse(doctorScheduleRepository.save(schedule));
+    }
+
+    /** Owner action — stops (or resumes) new bookings against this schedule without deleting it. */
+    public DoctorScheduleResponse toggleActive(String ownerEmail, String scheduleId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        DoctorSchedule schedule = doctorScheduleRepository.findByIdAndFranchiseId(parseId(scheduleId, "DoctorSchedule"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("DoctorSchedule", "id", scheduleId));
+        schedule.setActive(!schedule.isActive());
         return toResponse(doctorScheduleRepository.save(schedule));
     }
 
@@ -100,7 +135,8 @@ public class DoctorScheduleService {
                 schedule.getBookedCount(),
                 currentServingSerial,
                 schedule.getFee(),
-                schedule.isActive()
+                schedule.isActive(),
+                schedule.getBookingOpensAt()
         );
     }
 }

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -38,4 +39,7 @@ public class WalkInBookingRequest {
 
     /** Optional — the doctor or other person who referred this patient in. */
     private String referralId;
+
+    /** Optional — lets the owner backdate a walk-in entered after the fact. Defaults to now if omitted. */
+    private LocalDateTime createdAt;
 }

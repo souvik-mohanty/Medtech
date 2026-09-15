@@ -20,10 +20,12 @@ import {
   getOwnerDoctorSchedules,
   markAppointmentCompleted,
   markAppointmentPaid,
+  toggleDoctorScheduleActive,
+  updateDoctorSchedule,
 } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency } from "@/lib/utils"
-import type { CreateDoctorScheduleInput, SlotType } from "@/types"
+import { formatCurrency, formatDateTime } from "@/lib/utils"
+import type { CreateDoctorScheduleInput, DoctorSchedule, SlotType } from "@/types"
 
 function scheduleLabel(s: { doctorName: string; scheduleDate: string; startTime: string; endTime: string }) {
   return `${s.doctorName} — ${s.scheduleDate} ${formatTime(s.startTime)}–${formatTime(s.endTime)}`
@@ -38,6 +40,7 @@ const emptyForm: CreateDoctorScheduleInput = {
   slotType: "LIMITED",
   maxPatients: 10,
   fee: 0,
+  bookingOpensAt: undefined,
 }
 
 function formatTime(value: string) {
@@ -50,6 +53,7 @@ export function OwnerDoctorsPage() {
   const { data: appointments, isLoading: loadingAppointments } = useQuery({ queryKey: ["owner-doctor-appointments"], queryFn: getOwnerAppointments })
 
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState<DoctorSchedule | null>(null)
   const [form, setForm] = useState<CreateDoctorScheduleInput>(emptyForm)
   const [selectedScheduleId, setSelectedScheduleId] = useState("")
 
@@ -57,13 +61,44 @@ export function OwnerDoctorsPage() {
     .filter((a) => a.scheduleId === selectedScheduleId)
     .sort((a, b) => (a.serialNumber ?? Number.MAX_SAFE_INTEGER) - (b.serialNumber ?? Number.MAX_SAFE_INTEGER))
 
-  const createMutation = useMutation({
-    mutationFn: () => createDoctorSchedule(form),
+  function openAddSchedule() {
+    setEditingSchedule(null)
+    setForm(emptyForm)
+    setDialogOpen(true)
+  }
+
+  function openEditSchedule(schedule: DoctorSchedule) {
+    setEditingSchedule(schedule)
+    setForm({
+      doctorName: schedule.doctorName,
+      doctorSpecialization: schedule.doctorSpecialization ?? "",
+      scheduleDate: schedule.scheduleDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      slotType: schedule.slotType,
+      maxPatients: schedule.maxPatients,
+      fee: schedule.fee,
+      bookingOpensAt: schedule.bookingOpensAt?.slice(0, 16),
+    })
+    setDialogOpen(true)
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () => (editingSchedule ? updateDoctorSchedule(editingSchedule.id, form) : createDoctorSchedule(form)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-doctor-schedules"] })
-      toast.success("Schedule added")
+      toast.success(editingSchedule ? "Schedule updated" : "Schedule added")
       setForm(emptyForm)
       setDialogOpen(false)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+
+  const toggleScheduleMutation = useMutation({
+    mutationFn: (id: string) => toggleDoctorScheduleActive(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["owner-doctor-schedules"] })
+      toast.success(updated.active ? "Booking resumed" : "Booking stopped")
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
@@ -93,7 +128,7 @@ export function OwnerDoctorsPage() {
         title="Doctor Appointments"
         description="Set up a doctor's visiting windows and track who books them."
         actions={
-          <Button onClick={() => { setForm(emptyForm); setDialogOpen(true) }}>
+          <Button onClick={openAddSchedule}>
             <Plus className="size-4" /> Add schedule
           </Button>
         }
@@ -109,7 +144,7 @@ export function OwnerDoctorsPage() {
           {loadingSchedules ? (
             <LoadingState rows={5} />
           ) : !schedules || schedules.length === 0 ? (
-            <EmptyState icon={Stethoscope} title="No schedules yet" description="Add a doctor's visiting window so patients can book it." actionLabel="Add schedule" onAction={() => setDialogOpen(true)} />
+            <EmptyState icon={Stethoscope} title="No schedules yet" description="Add a doctor's visiting window so patients can book it." actionLabel="Add schedule" onAction={openAddSchedule} />
           ) : (
             <div className="overflow-x-auto rounded-xl border bg-card">
               <Table>
@@ -122,11 +157,15 @@ export function OwnerDoctorsPage() {
                     <TableHead>Booked</TableHead>
                     <TableHead>Now serving</TableHead>
                     <TableHead>Fee</TableHead>
+                    <TableHead>Booking opens</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {schedules.map((s) => (
+                  {schedules.map((s) => {
+                    const opensInFuture = !!s.bookingOpensAt && new Date(s.bookingOpensAt) > new Date()
+                    return (
                     <TableRow key={s.id}>
                       <TableCell>
                         <p className="font-medium">{s.doctorName}</p>
@@ -138,13 +177,32 @@ export function OwnerDoctorsPage() {
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? `${s.bookedCount} / ${s.maxPatients}` : s.bookedCount}</TableCell>
                       <TableCell className="text-sm">{s.slotType === "LIMITED" ? `#${s.currentServingSerial}` : "—"}</TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(s.fee)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {s.bookingOpensAt ? (
+                          <span className={opensInFuture ? "text-warning-foreground" : ""}>{formatDateTime(s.bookingOpensAt)}</span>
+                        ) : (
+                          "Immediately"
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={s.active ? "secondary" : "outline"} className={s.active ? "text-success" : "text-muted-foreground"}>
                           {s.active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
+                      <TableCell className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEditSchedule(s)}>Edit</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={toggleScheduleMutation.isPending && toggleScheduleMutation.variables === s.id}
+                          onClick={() => toggleScheduleMutation.mutate(s.id)}
+                        >
+                          {s.active ? "Stop booking" : "Resume booking"}
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -252,12 +310,12 @@ export function OwnerDoctorsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add doctor schedule</DialogTitle>
+            <DialogTitle>{editingSchedule ? "Edit doctor schedule" : "Add doctor schedule"}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              createMutation.mutate()
+              saveMutation.mutate()
             }}
             className="space-y-4"
           >
@@ -339,11 +397,24 @@ export function OwnerDoctorsPage() {
               </div>
             )}
 
+            <div className="space-y-1.5">
+              <Label htmlFor="ds-opens">Booking opens at (optional)</Label>
+              <Input
+                id="ds-opens"
+                type="datetime-local"
+                value={form.bookingOpensAt ?? ""}
+                onChange={(e) => setForm({ ...form, bookingOpensAt: e.target.value || undefined })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to let patients book immediately. Otherwise online booking stays closed until this moment (you can still enter walk-ins any time).
+              </p>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-                Add schedule
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+                {editingSchedule ? "Save changes" : "Add schedule"}
               </Button>
             </DialogFooter>
           </form>

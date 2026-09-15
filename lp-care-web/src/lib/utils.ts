@@ -34,6 +34,13 @@ export function formatDateTime(value: string | Date): string {
   }).format(date)
 }
 
+/** Current local date/time formatted for an <input type="datetime-local"> default value ("yyyy-MM-ddTHH:mm"). */
+export function nowForDateTimeInput(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** Simulates network latency for mock API services. */
 export function mockDelay(ms = 500): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))

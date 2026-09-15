@@ -81,6 +81,8 @@ export interface CreateCounterBillInput {
   couponCode?: string
   note?: string
   referralId?: string
+  /** Optional — lets the owner backdate a walk-in sale entered after the fact. Defaults to now if omitted. */
+  createdAt?: string
 }
 
 /** Owner action — a walk-in medicine/equipment purchase at the counter. Paid in cash and invoiced immediately. */
