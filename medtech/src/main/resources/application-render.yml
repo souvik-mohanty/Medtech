@@ -1,0 +1,20 @@
+# Activated on Render via SPRING_PROFILES_ACTIVE=render. Unlike the default
+# profile (local Docker Postgres, its own dedicated database — no schema
+# scoping needed), a hosted database here may be shared with another
+# project whose tables already live in "public" (see application-local.yml,
+# gitignored, for the Neon case this mirrors) — so DB_SCHEMA keeps
+# MedTech's tables confined to their own schema instead. No real
+# credentials here; DB_URL/DB_USERNAME/DB_PASSWORD/DB_SCHEMA are supplied
+# as Render environment variables, never committed.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  flyway:
+    schemas: ${DB_SCHEMA}
+    create-schemas: true
+  jpa:
+    properties:
+      hibernate:
+        default_schema: ${DB_SCHEMA}
