@@ -4,6 +4,7 @@ import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.dto.FranchiseBrandingRequest;
 import com.company.medtech.franchise.dto.FranchiseResponse;
 import com.company.medtech.franchise.model.Franchise;
+import com.company.medtech.franchise.repository.FranchiseOwnerRepository;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,19 +16,25 @@ import java.util.Set;
 public class FranchiseService {
 
     private final FranchiseRepository franchiseRepository;
+    private final FranchiseOwnerRepository franchiseOwnerRepository;
 
-    public FranchiseService(FranchiseRepository franchiseRepository) {
+    public FranchiseService(FranchiseRepository franchiseRepository, FranchiseOwnerRepository franchiseOwnerRepository) {
         this.franchiseRepository = franchiseRepository;
+        this.franchiseOwnerRepository = franchiseOwnerRepository;
     }
 
     /**
      * Used by other modules (inventory, billing) to resolve "the caller's
-     * franchise". Also rejects an inactive franchise here so every
-     * franchise-side self-service action (profile, inventory, billing,
-     * payment gateway) is blocked in this one place.
+     * franchise". Checks the franchise's own (primary) owner_email first,
+     * then falls back to the franchise_owner table for an additional
+     * co-owner login — see FranchiseOwner. Also rejects an inactive
+     * franchise here so every franchise-side self-service action (profile,
+     * inventory, billing, payment gateway) is blocked in this one place.
      */
     public Franchise getByOwnerEmail(String ownerEmail) {
         Franchise franchise = franchiseRepository.findByOwnerEmail(ownerEmail)
+                .or(() -> franchiseOwnerRepository.findByOwnerEmail(ownerEmail)
+                        .flatMap(co -> franchiseRepository.findById(co.getFranchiseId())))
                 .orElseThrow(() -> new BusinessException("No franchise is linked to this account."));
 
         if (!franchise.isActive()) {

@@ -2,12 +2,15 @@ package com.company.medtech.franchise.service;
 
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.model.Franchise;
+import com.company.medtech.franchise.model.FranchiseOwner;
+import com.company.medtech.franchise.repository.FranchiseOwnerRepository;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,11 +31,28 @@ class FranchiseServiceTest {
     @Autowired
     private FranchiseRepository franchiseRepository;
 
+    @Autowired
+    private FranchiseOwnerRepository franchiseOwnerRepository;
+
     @Test
     void getByOwnerEmailReturnsTheLinkedFranchise() {
         Franchise franchise = franchiseRepository.save(newFranchise("Owner's Pharmacy"));
 
         assertThat(franchiseService.getByOwnerEmail(franchise.getOwnerEmail()).getId()).isEqualTo(franchise.getId());
+    }
+
+    @Test
+    void getByOwnerEmailResolvesACoOwnerThroughTheFranchiseOwnerTable() {
+        Franchise franchise = franchiseRepository.save(newFranchise("Shared Pharmacy"));
+        String coOwnerEmail = "co-owner-" + UUID.randomUUID() + "@example.com";
+
+        FranchiseOwner coOwner = new FranchiseOwner();
+        coOwner.setFranchiseId(franchise.getId());
+        coOwner.setOwnerEmail(coOwnerEmail);
+        coOwner.setCreatedAt(LocalDateTime.now());
+        franchiseOwnerRepository.save(coOwner);
+
+        assertThat(franchiseService.getByOwnerEmail(coOwnerEmail).getId()).isEqualTo(franchise.getId());
     }
 
     @Test
