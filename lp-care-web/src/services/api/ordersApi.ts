@@ -106,9 +106,3 @@ export async function viewOwnerInvoice(id: string): Promise<void> {
   const response = await apiClient.get<Blob>(`/api/franchise/billing/bills/${id}/invoice`, { responseType: "blob" })
   window.open(URL.createObjectURL(response.data), "_blank")
 }
-
-/** Opens the order's invoice PDF in a new tab — for the patient's own order. */
-export async function viewMyOrderInvoice(id: string): Promise<void> {
-  const response = await apiClient.get<Blob>(`/api/patient/orders/${id}/invoice`, { responseType: "blob" })
-  window.open(URL.createObjectURL(response.data), "_blank")
-}

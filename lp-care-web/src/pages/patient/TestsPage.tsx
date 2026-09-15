@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeader } from "@/components/common/PageHeader"
 import { CardGridSkeleton } from "@/components/common/LoadingState"
 import { EmptyState } from "@/components/common/EmptyState"
 import { ErrorState } from "@/components/common/ErrorState"
 import { CartSummaryBar } from "@/components/patient/CartSummaryBar"
-import { getTests, type TestFilters } from "@/services/api/testsApi"
+import { getPackages, getTests, type TestFilters } from "@/services/api/testsApi"
 import { useBookingCartStore } from "@/app/store/bookingCartStore"
 import { formatCurrency } from "@/lib/utils"
 import type { TestCategory } from "@/types"
@@ -42,8 +43,12 @@ export function PatientTestsPage() {
     queryKey: ["tests", search, category, sort],
     queryFn: () => getTests({ search, category, sort }),
   })
+  const { data: packages, isLoading: loadingPackages, isError: packagesError, refetch: refetchPackages } = useQuery({
+    queryKey: ["packages"],
+    queryFn: getPackages,
+  })
 
-  const { selectedTests, addTest, removeTest } = useBookingCartStore()
+  const { selectedTests, addTest, removeTest, selectedPackage, selectPackage } = useBookingCartStore()
   const selectedIds = useMemo(() => new Set(selectedTests.map((t) => t.id)), [selectedTests])
 
   const totalPages = Math.max(1, Math.ceil((data?.length ?? 0) / PAGE_SIZE))
@@ -56,99 +61,162 @@ export function PatientTestsPage() {
 
   return (
     <div className="pb-20">
-      <PageHeader title="Browse Tests" description="Search or filter by category, then add tests to your booking." />
+      <PageHeader title="Book Test" description="Browse individual tests or bundled packages, then proceed to book." />
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by test name or code…"
-            className="pl-9"
-            value={search}
-            onChange={(e) => updateFilter(setSearch, e.target.value)}
-          />
-        </div>
-        <Select value={category} onValueChange={(v) => updateFilter(setCategory, v as TestCategory | "ALL")}>
-          <SelectTrigger className="w-full sm:w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={(v) => updateFilter(setSort, v as typeof sort)}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="NAME_ASC">Name (A–Z)</SelectItem>
-            <SelectItem value="PRICE_ASC">Price: Low to High</SelectItem>
-            <SelectItem value="PRICE_DESC">Price: High to Low</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Tabs defaultValue="tests">
+        <TabsList>
+          <TabsTrigger value="tests">Individual Tests</TabsTrigger>
+          <TabsTrigger value="packages">Packages</TabsTrigger>
+        </TabsList>
 
-      <div className="mt-6">
-        {isLoading ? (
-          <CardGridSkeleton count={8} />
-        ) : isError ? (
-          <ErrorState onRetry={() => refetch()} />
-        ) : pageItems.length === 0 ? (
-          <EmptyState title="No tests found" description="Try a different search term or category." />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {pageItems.map((test) => {
-                const selected = selectedIds.has(test.id)
-                return (
-                  <Card key={test.id} className="flex flex-col">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge variant="secondary" className="text-xs">{test.category.replace(/_/g, " ")}</Badge>
-                        {test.prescriptionRequired && (
-                          <Badge variant="outline" className="text-xs text-warning-foreground">Rx required</Badge>
-                        )}
-                      </div>
-                      <CardTitle className="text-base">{test.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground">Code: {test.code}</p>
-                    </CardHeader>
-                    <CardContent className="mt-auto flex items-center justify-between pt-2">
-                      <span className="text-lg font-bold">{formatCurrency(test.price)}</span>
-                      {selected ? (
-                        <Button size="sm" variant="outline" onClick={() => removeTest(test.id)}>
-                          <Check className="size-4" /> Added
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => addTest(test)}>
-                          <Plus className="size-4" /> Add
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
+        <TabsContent value="tests">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by test name or code…"
+                className="pl-9"
+                value={search}
+                onChange={(e) => updateFilter(setSearch, e.target.value)}
+              />
             </div>
+            <Select value={category} onValueChange={(v) => updateFilter(setCategory, v as TestCategory | "ALL")}>
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sort} onValueChange={(v) => updateFilter(setSort, v as typeof sort)}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NAME_ASC">Name (A–Z)</SelectItem>
+                <SelectItem value="PRICE_ASC">Price: Low to High</SelectItem>
+                <SelectItem value="PRICE_DESC">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-center gap-2">
-                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-                  Previous
-                </Button>
-                <span className="px-2 text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
-                </span>
-                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
-                  Next
-                </Button>
+          <div className="mt-6">
+            {isLoading ? (
+              <CardGridSkeleton count={8} />
+            ) : isError ? (
+              <ErrorState onRetry={() => refetch()} />
+            ) : pageItems.length === 0 ? (
+              <EmptyState title="No tests found" description="Try a different search term or category." />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {pageItems.map((test) => {
+                    const selected = selectedIds.has(test.id)
+                    return (
+                      <Card key={test.id} className="flex flex-col">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge variant="secondary" className="text-xs">{test.category.replace(/_/g, " ")}</Badge>
+                            {test.prescriptionRequired && (
+                              <Badge variant="outline" className="text-xs text-warning-foreground">Rx required</Badge>
+                            )}
+                          </div>
+                          <CardTitle className="text-base">{test.name}</CardTitle>
+                          <p className="text-xs text-muted-foreground">Code: {test.code}</p>
+                        </CardHeader>
+                        <CardContent className="mt-auto flex items-center justify-between pt-2">
+                          <span className="text-lg font-bold">{formatCurrency(test.price)}</span>
+                          {selected ? (
+                            <Button size="sm" variant="outline" onClick={() => removeTest(test.id)}>
+                              <Check className="size-4" /> Added
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => addTest(test)}>
+                              <Plus className="size-4" /> Add
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="mt-8 flex items-center justify-center gap-2">
+                    <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+                      Previous
+                    </Button>
+                    <span className="px-2 text-sm text-muted-foreground">
+                      Page {page} of {totalPages}
+                    </span>
+                    <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="packages">
+          <div className="mt-4">
+            {loadingPackages ? (
+              <CardGridSkeleton count={6} />
+            ) : packagesError ? (
+              <ErrorState onRetry={() => refetchPackages()} />
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {(packages ?? []).map((pkg) => {
+                  const included = pkg.tests
+                  const savings = pkg.totalPrice - pkg.discountedPrice
+                  const selected = selectedPackage?.id === pkg.id
+                  return (
+                    <Card key={pkg.id} className={selected ? "flex flex-col ring-2 ring-primary" : "flex flex-col"}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{pkg.description}</p>
+                      </CardHeader>
+                      <CardContent className="flex flex-1 flex-col">
+                        <ul className="space-y-1.5 text-sm">
+                          {included.slice(0, 4).map((t) => (
+                            <li key={t.id} className="flex items-center gap-2">
+                              <Check className="size-3.5 shrink-0 text-secondary" />
+                              <span className="text-muted-foreground">{t.name}</span>
+                            </li>
+                          ))}
+                          {included.length > 4 && (
+                            <li className="text-xs text-muted-foreground">+ {included.length - 4} more tests</li>
+                          )}
+                        </ul>
+
+                        <div className="mt-auto pt-4">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-bold">{formatCurrency(pkg.discountedPrice)}</span>
+                            <span className="text-sm text-muted-foreground line-through">{formatCurrency(pkg.totalPrice)}</span>
+                            <span className="text-xs font-medium text-secondary">Save {formatCurrency(savings)}</span>
+                          </div>
+                          <Button
+                            className="mt-3 w-full"
+                            variant={selected ? "outline" : "default"}
+                            onClick={() => (selected ? selectPackage(null) : selectPackage(pkg))}
+                          >
+                            {selected ? "Selected — Remove" : "Select Package"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <CartSummaryBar />
     </div>

@@ -57,10 +57,10 @@ export function WalkInDoctorAppointmentDialog({ open, onOpenChange }: WalkInDoct
         paidNow,
         createdAt: entryDateTime || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (booked) => {
       queryClient.invalidateQueries({ queryKey: ["owner-doctor-schedules"] })
       queryClient.invalidateQueries({ queryKey: ["owner-doctor-appointments"] })
-      toast.success("Appointment booked")
+      toast.success(booked.serialNumber !== undefined ? `Appointment booked — serial #${booked.serialNumber}` : "Appointment booked")
       reset()
       onOpenChange(false)
     },

@@ -208,15 +208,3 @@ export async function createWalkInBooking(input: CreateWalkInBookingInput): Prom
   })
   return toBooking(response.data.data)
 }
-
-/** Opens the booking's invoice PDF in a new tab. */
-export async function viewOwnerBookingInvoice(id: string): Promise<void> {
-  const response = await apiClient.get<Blob>(`/api/franchise/labtests/bookings/${id}/invoice`, { responseType: "blob" })
-  window.open(URL.createObjectURL(response.data), "_blank")
-}
-
-/** Opens the booking's invoice PDF in a new tab — for the patient's own booking. */
-export async function viewMyBookingInvoice(id: string): Promise<void> {
-  const response = await apiClient.get<Blob>(`/api/patient/labtests/bookings/${id}/invoice`, { responseType: "blob" })
-  window.open(URL.createObjectURL(response.data), "_blank")
-}
