@@ -14,6 +14,16 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+/** Same as formatCurrency but keeps paise — use wherever the exact amount matters (e.g. settling a balance), since the rounded version can hide what's actually owed. */
+export function formatCurrencyPrecise(amount: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
 export function formatDate(value: string | Date): string {
   const date = typeof value === "string" ? new Date(value) : value
   return new Intl.DateTimeFormat("en-IN", {

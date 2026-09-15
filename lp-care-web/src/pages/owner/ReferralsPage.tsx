@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { createReferral, getReferrals, settleReferral, toggleReferralActive, updateReferral, type ReferralInput } from "@/services/api/referralsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatCurrencyPrecise } from "@/lib/utils"
 import type { CommissionType, Referral, ReferralType } from "@/types"
 
 const emptyForm: ReferralInput = { name: "", type: "DOCTOR", phone: "", commissionType: "PERCENTAGE", commissionValue: 0 }
@@ -232,20 +232,26 @@ export function OwnerReferralsPage() {
               className="space-y-4"
             >
               <p className="text-sm text-muted-foreground">
-                {formatCurrency(settleTarget.settledAmount)} of {formatCurrency(settleTarget.totalEarned)} settled so far —{" "}
-                {formatCurrency(settleTarget.balanceDue)} still owed to {settleTarget.name}.
+                {formatCurrencyPrecise(settleTarget.settledAmount)} of {formatCurrencyPrecise(settleTarget.totalEarned)} settled so far —{" "}
+                {formatCurrencyPrecise(settleTarget.balanceDue)} still owed to {settleTarget.name}.
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="settle-amount">Amount paid now</Label>
-                <Input
-                  id="settle-amount"
-                  type="number"
-                  min={1}
-                  max={settleTarget.balanceDue}
-                  value={settleAmount}
-                  onChange={(e) => setSettleAmount(e.target.value)}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="settle-amount"
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    max={settleTarget.balanceDue}
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value)}
+                    required
+                  />
+                  <Button type="button" variant="outline" onClick={() => setSettleAmount(String(settleTarget.balanceDue))}>
+                    Settle in full
+                  </Button>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setSettleTarget(null)}>Cancel</Button>
