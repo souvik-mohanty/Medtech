@@ -1,24 +1,32 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
-import { Search } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { Loader2, Pencil, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PageHeader } from "@/components/common/PageHeader"
 import { StatusBadge } from "@/components/common/StatusBadge"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
-import { getPatientSummaries } from "@/services/api/patientsApi"
+import { getPatientSummaries, updatePatientDetails, type PatientUpdateInput } from "@/services/api/patientsApi"
+import { errorMessage } from "@/lib/apiClient"
 import { formatDate } from "@/lib/utils"
+import type { PatientSummary } from "@/types"
 
 const PAGE_SIZE = 8
 
 export function OwnerPatientsPage() {
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL")
   const [page, setPage] = useState(1)
+  const [editTarget, setEditTarget] = useState<PatientSummary | null>(null)
+  const [editForm, setEditForm] = useState<PatientUpdateInput>({})
 
   const { data, isLoading } = useQuery({
     queryKey: ["owner-patients", search, status],
@@ -27,6 +35,21 @@ export function OwnerPatientsPage() {
 
   const totalPages = Math.max(1, Math.ceil((data?.length ?? 0) / PAGE_SIZE))
   const pageItems = useMemo(() => (data ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [data, page])
+
+  function openEdit(p: PatientSummary) {
+    setEditTarget(p)
+    setEditForm({ fullName: p.fullName, phone: p.phone, email: p.email ?? "" })
+  }
+
+  const updateMutation = useMutation({
+    mutationFn: () => updatePatientDetails(editTarget!.id, editForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-patients"] })
+      toast.success("Patient details updated")
+      setEditTarget(null)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
 
   return (
     <div>
@@ -87,9 +110,14 @@ export function OwnerPatientsPage() {
                     <TableCell className="text-sm">{p.lastActivityDate ? formatDate(p.lastActivityDate) : "—"}</TableCell>
                     <TableCell><StatusBadge status={p.status} /></TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={`/owner/patients/${p.id}`}>View</Link>
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
+                          <Pencil className="size-3.5" /> Edit
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/owner/patients/${p.id}`}>View</Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -106,6 +134,48 @@ export function OwnerPatientsPage() {
           )}
         </>
       )}
+
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit patient details</DialogTitle>
+          </DialogHeader>
+          {editTarget && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                updateMutation.mutate()
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="ep-name">Full name</Label>
+                <Input id="ep-name" value={editForm.fullName ?? ""} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ep-phone">Phone</Label>
+                <Input id="ep-phone" value={editForm.phone ?? ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ep-email">Email</Label>
+                <Input id="ep-email" type="email" value={editForm.email ?? ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                {editTarget.email && (
+                  <p className="text-xs text-muted-foreground">
+                    This patient has an account — this updates their contact email only, not the one they sign in with.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+                  Save changes
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

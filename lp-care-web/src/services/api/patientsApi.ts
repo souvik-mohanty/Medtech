@@ -99,3 +99,22 @@ export async function getPatientSummaries(filters: PatientListFilters = {}): Pro
   })
   return response.data.data
 }
+
+export interface PatientUpdateInput {
+  fullName?: string
+  phone?: string
+  email?: string
+}
+
+/**
+ * Owner action — edits a directory row's name/phone/email. For a real
+ * account this updates their contact email only, never their login email
+ * (see the backend's PatientDirectoryService#updateDetails); for a walk-in
+ * with no account it rewrites the underlying booking/order/appointment
+ * records directly, so the row's id can change here — always use the
+ * returned row, not the one that was passed in.
+ */
+export async function updatePatientDetails(id: string, input: PatientUpdateInput): Promise<PatientSummary> {
+  const response = await apiClient.put<{ data: PatientSummary }>(`/api/franchise/patients/${id}`, input)
+  return response.data.data
+}

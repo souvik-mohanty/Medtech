@@ -2,11 +2,16 @@ package com.company.medtech.patient.controller;
 
 import com.company.medtech.common.response.ApiResponse;
 import com.company.medtech.patient.dto.PatientSummaryResponse;
+import com.company.medtech.patient.dto.PatientUpdateRequest;
 import com.company.medtech.patient.service.PatientDirectoryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,5 +36,17 @@ public class PatientDirectoryController {
             @RequestParam(required = false) String status
     ) {
         return ApiResponse.success("OK", patientDirectoryService.list(authentication.getName(), search, status));
+    }
+
+    @PutMapping(value = "/{patientId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<PatientSummaryResponse> update(
+            Authentication authentication,
+            @PathVariable String patientId,
+            @Valid @RequestBody PatientUpdateRequest request
+    ) {
+        return ApiResponse.success(
+                "Patient details updated",
+                patientDirectoryService.updateDetails(authentication.getName(), patientId, request)
+        );
     }
 }
