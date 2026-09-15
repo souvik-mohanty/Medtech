@@ -11,5 +11,8 @@ public interface LabTestComboRepository extends JpaRepository<LabTestCombo, UUID
 
     List<LabTestCombo> findByFranchiseIdAndActiveTrue(UUID franchiseId);
 
+    /** Owner-facing catalog management sees everything, active and inactive. */
+    List<LabTestCombo> findByFranchiseIdOrderByNameAsc(UUID franchiseId);
+
     Optional<LabTestCombo> findByIdAndFranchiseId(UUID id, UUID franchiseId);
 }

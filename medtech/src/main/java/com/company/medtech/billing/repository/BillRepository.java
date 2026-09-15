@@ -18,6 +18,8 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
 
     Optional<Bill> findByIdAndFranchiseId(UUID id, UUID franchiseId);
 
+    Optional<Bill> findByIdAndPatientEmail(UUID id, String patientEmail);
+
     /** Total commission this referral has earned from walk-in medicine bills — see ReferralService#toResponse. */
     @Query("select coalesce(sum(b.referralCommission), 0) from Bill b where b.referralId = :referralId")
     BigDecimal sumCommissionByReferralId(@Param("referralId") UUID referralId);

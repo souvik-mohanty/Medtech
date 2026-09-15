@@ -11,4 +11,7 @@ public interface LabTestBookingItemRepository extends JpaRepository<LabTestBooki
     List<LabTestBookingItem> findByBookingIdOrderByItemOrder(UUID bookingId);
 
     List<LabTestBookingItem> findByBookingIdInOrderByItemOrder(List<UUID> bookingIds);
+
+    /** Blocks a LabTest delete once it has real booking history — see LabTestService#deleteTest. */
+    boolean existsByLabTestId(UUID labTestId);
 }

@@ -2,6 +2,7 @@ package com.company.medtech.lab.service;
 
 import com.company.medtech.auth.model.UserAuth;
 import com.company.medtech.auth.repository.UserAuthRepository;
+import com.company.medtech.billing.service.InvoicePdfService;
 import com.company.medtech.common.enums.PaymentStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.common.exceptions.ResourceNotFoundException;
@@ -86,6 +87,7 @@ public class LabTestBookingService {
     private final NotificationService notificationService;
     private final PatientProfileRepository patientProfileRepository;
     private final PaymentHistoryRepository paymentHistoryRepository;
+    private final InvoicePdfService invoicePdfService;
 
     public LabTestBookingService(
             LabTestBookingRepository bookingRepository,
@@ -103,7 +105,8 @@ public class LabTestBookingService {
             LabReportRepository labReportRepository,
             NotificationService notificationService,
             PatientProfileRepository patientProfileRepository,
-            PaymentHistoryRepository paymentHistoryRepository
+            PaymentHistoryRepository paymentHistoryRepository,
+            InvoicePdfService invoicePdfService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
@@ -121,6 +124,7 @@ public class LabTestBookingService {
         this.notificationService = notificationService;
         this.patientProfileRepository = patientProfileRepository;
         this.paymentHistoryRepository = paymentHistoryRepository;
+        this.invoicePdfService = invoicePdfService;
     }
 
     /**
@@ -484,6 +488,27 @@ public class LabTestBookingService {
         }
 
         return toResponseWithItems(booking);
+    }
+
+    /** Owner viewing/printing the invoice PDF for one of their own bookings — see PatientLabTestBookingController for the patient-facing equivalent. */
+    @Transactional(readOnly = true)
+    public byte[] renderInvoicePdf(String ownerEmail, String bookingId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        LabTestBooking booking = bookingRepository.findByIdAndFranchiseId(parseId(bookingId, "Booking"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        List<LabTestBookingItem> items = bookingItemRepository.findByBookingIdOrderByItemOrder(booking.getId());
+        return invoicePdfService.renderBookingInvoice(franchise, booking, items);
+    }
+
+    /** A patient viewing/printing the invoice PDF for one of their own bookings. */
+    @Transactional(readOnly = true)
+    public byte[] renderInvoicePdfForPatient(String patientEmail, String bookingId) {
+        LabTestBooking booking = bookingRepository.findByIdAndPatientEmail(parseId(bookingId, "Booking"), patientEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        Franchise franchise = franchiseRepository.findById(booking.getFranchiseId())
+                .orElseThrow(() -> new ResourceNotFoundException("Franchise", "id", booking.getFranchiseId().toString()));
+        List<LabTestBookingItem> items = bookingItemRepository.findByBookingIdOrderByItemOrder(booking.getId());
+        return invoicePdfService.renderBookingInvoice(franchise, booking, items);
     }
 
     /** Owner action — advances a booking's sample-collection status (and the overall status along with it). */

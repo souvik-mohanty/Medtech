@@ -43,6 +43,21 @@ public class LabTestController {
         return ApiResponse.success("Test updated", labTestService.toggleTestActive(authentication.getName(), id));
     }
 
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<LabTestResponse> updateTest(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody LabTestRequest request
+    ) {
+        return ApiResponse.success("Test updated", labTestService.updateTest(authentication.getName(), id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteTest(Authentication authentication, @PathVariable String id) {
+        labTestService.deleteTest(authentication.getName(), id);
+        return ApiResponse.success("Test deleted", null);
+    }
+
     @GetMapping("/combos")
     public ApiResponse<List<LabTestComboResponse>> listCombos(Authentication authentication) {
         return ApiResponse.success("OK", labTestService.listCombos(authentication.getName()));
@@ -59,5 +74,20 @@ public class LabTestController {
     @PatchMapping("/combos/{id}/toggle-active")
     public ApiResponse<LabTestComboResponse> toggleComboActive(Authentication authentication, @PathVariable String id) {
         return ApiResponse.success("Package updated", labTestService.toggleComboActive(authentication.getName(), id));
+    }
+
+    @PutMapping(value = "/combos/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<LabTestComboResponse> updateCombo(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody LabTestComboRequest request
+    ) {
+        return ApiResponse.success("Package updated", labTestService.updateCombo(authentication.getName(), id, request));
+    }
+
+    @DeleteMapping("/combos/{id}")
+    public ApiResponse<Void> deleteCombo(Authentication authentication, @PathVariable String id) {
+        labTestService.deleteCombo(authentication.getName(), id);
+        return ApiResponse.success("Package deleted", null);
     }
 }

@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { PublicLayout } from "@/components/layouts/PublicLayout"
 import { PatientLayout } from "@/components/layouts/PatientLayout"
 import { OwnerLayout } from "@/components/layouts/OwnerLayout"
@@ -39,7 +39,6 @@ import { OwnerDashboardPage } from "@/pages/owner/DashboardPage"
 import { OwnerPatientsPage } from "@/pages/owner/PatientsPage"
 import { OwnerPatientDetailPage } from "@/pages/owner/PatientDetailPage"
 import { OwnerTestsPage } from "@/pages/owner/TestsPage"
-import { OwnerPackagesPage } from "@/pages/owner/PackagesPage"
 import { OwnerBookingsPage } from "@/pages/owner/BookingsPage"
 import { OwnerPendingOrdersPage } from "@/pages/owner/PendingOrdersPage"
 import { OwnerPaymentsPage } from "@/pages/owner/PaymentsPage"
@@ -119,7 +118,7 @@ export function AppRouter() {
           <Route path="/owner/patients" element={<OwnerPatientsPage />} />
           <Route path="/owner/patients/:patientId" element={<OwnerPatientDetailPage />} />
           <Route path="/owner/tests" element={<OwnerTestsPage />} />
-          <Route path="/owner/packages" element={<OwnerPackagesPage />} />
+          <Route path="/owner/packages" element={<Navigate to="/owner/tests" replace />} />
           <Route path="/owner/bookings" element={<OwnerBookingsPage />} />
           <Route path="/owner/walk-in" element={<OwnerWalkInPage />} />
           <Route path="/owner/pending-orders" element={<OwnerPendingOrdersPage />} />

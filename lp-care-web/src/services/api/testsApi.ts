@@ -127,6 +127,15 @@ export async function toggleTestActive(id: string): Promise<PathologyTest> {
   return toPathologyTest(response.data.data)
 }
 
+export async function updateTest(id: string, input: CreateTestInput): Promise<PathologyTest> {
+  const response = await apiClient.put<{ data: BackendLabTest }>(`/api/franchise/labtests/${id}`, input)
+  return toPathologyTest(response.data.data)
+}
+
+export async function deleteTest(id: string): Promise<void> {
+  await apiClient.delete(`/api/franchise/labtests/${id}`)
+}
+
 export type CreatePackageInput = Omit<TestPackage, "id" | "active" | "totalPrice" | "tests"> & { testIds: string[] }
 
 export async function createPackage(input: CreatePackageInput): Promise<TestPackage> {
@@ -142,4 +151,18 @@ export async function createPackage(input: CreatePackageInput): Promise<TestPack
 export async function togglePackageActive(id: string): Promise<TestPackage> {
   const response = await apiClient.patch<{ data: BackendLabTestCombo }>(`/api/franchise/labtests/combos/${id}/toggle-active`)
   return toTestPackage(response.data.data)
+}
+
+export async function updatePackage(id: string, input: CreatePackageInput): Promise<TestPackage> {
+  const { testIds, discountedPrice, ...rest } = input
+  const response = await apiClient.put<{ data: BackendLabTestCombo }>(`/api/franchise/labtests/combos/${id}`, {
+    ...rest,
+    comboPrice: discountedPrice,
+    testIds,
+  })
+  return toTestPackage(response.data.data)
+}
+
+export async function deletePackage(id: string): Promise<void> {
+  await apiClient.delete(`/api/franchise/labtests/combos/${id}`)
 }

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PageHeader } from "@/components/common/PageHeader"
@@ -17,8 +18,17 @@ import { errorMessage } from "@/lib/apiClient"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { Product } from "@/types"
 
+const EXPIRY_SOON_DAYS = 30
+
+type StockFilter = "ALL" | "EXPIRING_SOON" | "EXPIRED"
+
 function today(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+function daysUntil(dateStr: string): number {
+  const ms = new Date(dateStr).getTime() - new Date(today()).getTime()
+  return Math.round(ms / (1000 * 60 * 60 * 24))
 }
 
 function emptyForm(): ProductInput {
@@ -44,6 +54,15 @@ export function OwnerInventoryPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductInput>(emptyForm)
+  const [stockFilter, setStockFilter] = useState<StockFilter>("ALL")
+
+  const filteredProducts = (products ?? []).filter((p) => {
+    if (stockFilter === "ALL") return true
+    if (!p.expiryDate) return false
+    const days = daysUntil(p.expiryDate)
+    if (stockFilter === "EXPIRED") return days < 0
+    return days >= 0 && days <= EXPIRY_SOON_DAYS
+  })
 
   function openAdd() {
     setEditing(null)
@@ -101,10 +120,25 @@ export function OwnerInventoryPage() {
         }
       />
 
+      {!isLoading && products && products.length > 0 && (
+        <div className="mb-4 w-full sm:w-64">
+          <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as StockFilter)}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All products</SelectItem>
+              <SelectItem value="EXPIRING_SOON">Expiring within 30 days</SelectItem>
+              <SelectItem value="EXPIRED">Already expired</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {isLoading ? (
         <LoadingState rows={6} />
       ) : !products || products.length === 0 ? (
         <EmptyState icon={Package} title="No products yet" actionLabel="Add product" onAction={openAdd} />
+      ) : filteredProducts.length === 0 ? (
+        <EmptyState icon={Package} title="No products match this filter" />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card">
           <Table>
@@ -121,7 +155,7 @@ export function OwnerInventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((p) => (
+              {filteredProducts.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <p className="font-medium">{p.name}</p>
@@ -136,7 +170,15 @@ export function OwnerInventoryPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.purchaseDate ? formatDate(p.purchaseDate) : "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.supplier || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{p.expiryDate ? formatDate(p.expiryDate) : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {p.expiryDate ? (
+                      <span className={daysUntil(p.expiryDate) < 0 ? "text-destructive" : daysUntil(p.expiryDate) <= EXPIRY_SOON_DAYS ? "text-warning-foreground" : ""}>
+                        {formatDate(p.expiryDate)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={p.active ? "secondary" : "outline"}>{p.active ? "Active" : "Inactive"}</Badge>
                   </TableCell>

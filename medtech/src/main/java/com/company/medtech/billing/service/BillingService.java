@@ -229,6 +229,21 @@ public class BillingService {
     }
 
     @Transactional(readOnly = true)
+    public byte[] renderInvoicePdfForPatient(String patientEmail, String billId) {
+        Bill bill = billRepository.findByIdAndPatientEmail(parseId(billId, "Bill"), patientEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Bill", "id", billId));
+
+        if (bill.getInvoiceNumber() == null) {
+            throw new BusinessException("Invoice is not available until payment is confirmed");
+        }
+
+        Franchise franchise = franchiseRepository.findById(bill.getFranchiseId())
+                .orElseThrow(() -> new ResourceNotFoundException("Franchise", "id", bill.getFranchiseId().toString()));
+
+        return invoicePdfService.render(franchise, bill);
+    }
+
+    @Transactional(readOnly = true)
     public List<BillResponse> listForOwner(String ownerEmail) {
         Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
         return billRepository.findByFranchiseIdOrderByCreatedAtDesc(franchise.getId())

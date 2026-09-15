@@ -24,8 +24,7 @@ import { getOwnerUnreadCount } from "@/services/api/notificationsApi"
 const navItems: DashboardNavItem[] = [
   { to: "/owner", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/owner/patients", label: "Patients", icon: Users },
-  { to: "/owner/tests", label: "Pathology Tests", icon: FlaskConical },
-  { to: "/owner/packages", label: "Test Packages", icon: Package },
+  { to: "/owner/tests", label: "Tests & Packages", icon: FlaskConical },
   { to: "/owner/bookings", label: "Bookings", icon: Calendar },
   { to: "/owner/walk-in", label: "Walk-in Billing", icon: Store },
   { to: "/owner/pending-orders", label: "Pending Online Orders", icon: Clock },

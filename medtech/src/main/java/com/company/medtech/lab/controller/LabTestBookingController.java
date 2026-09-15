@@ -83,6 +83,15 @@ public class LabTestBookingController {
                 .body(report.getFileData());
     }
 
+    @GetMapping("/{bookingId}/invoice")
+    public ResponseEntity<byte[]> downloadInvoice(Authentication authentication, @PathVariable String bookingId) {
+        byte[] pdf = labTestBookingService.renderInvoicePdf(authentication.getName(), bookingId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"invoice-" + bookingId + ".pdf\"")
+                .body(pdf);
+    }
+
     @PatchMapping(value = "/{bookingId}/collection-status", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<LabTestBookingResponse> updateCollectionStatus(
             Authentication authentication,

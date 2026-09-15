@@ -54,4 +54,13 @@ public class PatientLabTestBookingController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + report.getFileName() + "\"")
                 .body(report.getFileData());
     }
+
+    @GetMapping("/{bookingId}/invoice")
+    public ResponseEntity<byte[]> downloadInvoice(Authentication authentication, @PathVariable String bookingId) {
+        byte[] pdf = labTestBookingService.renderInvoicePdfForPatient(authentication.getName(), bookingId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"invoice-" + bookingId + ".pdf\"")
+                .body(pdf);
+    }
 }

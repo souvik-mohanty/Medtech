@@ -49,8 +49,8 @@ export function BookDoctorPage() {
         note: note || undefined,
         paymentMode: hasGateway ? paymentMode : "CASH",
       }),
-    onSuccess: () => {
-      toast.success("Appointment booked")
+    onSuccess: (booked) => {
+      toast.success(booked.serialNumber !== undefined ? `Appointment booked — you're #${booked.serialNumber} in line` : "Appointment booked")
       setTarget(null)
       navigate("/patient/appointments")
     },

@@ -11,5 +11,8 @@ public interface LabTestRepository extends JpaRepository<LabTest, UUID> {
 
     List<LabTest> findByFranchiseIdAndActiveTrue(UUID franchiseId);
 
+    /** Owner-facing catalog management sees everything, active and inactive. */
+    List<LabTest> findByFranchiseIdOrderByNameAsc(UUID franchiseId);
+
     Optional<LabTest> findByIdAndFranchiseId(UUID id, UUID franchiseId);
 }

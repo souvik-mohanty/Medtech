@@ -23,4 +23,7 @@ public interface LabTestBookingRepository extends JpaRepository<LabTestBooking, 
     /** Total commission this referral has earned from walk-in lab bookings — see ReferralService#toResponse. */
     @Query("select coalesce(sum(b.referralCommission), 0) from LabTestBooking b where b.referralId = :referralId")
     BigDecimal sumCommissionByReferralId(@Param("referralId") UUID referralId);
+
+    /** Blocks a LabTestCombo delete once it has real booking history — see LabTestService#deleteCombo. */
+    boolean existsByPackageId(UUID packageId);
 }
