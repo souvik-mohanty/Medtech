@@ -14,6 +14,7 @@ interface BackendLabTest {
   preparationInstructions: string | null
   reportTurnaroundHours: number
   prescriptionRequired: boolean
+  gstPercentage: number | null
 }
 
 interface BackendLabTestCombo {
@@ -41,6 +42,7 @@ function toPathologyTest(t: BackendLabTest): PathologyTest {
     reportTurnaroundHours: t.reportTurnaroundHours,
     prescriptionRequired: t.prescriptionRequired,
     active: t.active,
+    gstPercentage: t.gstPercentage ?? 0,
   }
 }
 

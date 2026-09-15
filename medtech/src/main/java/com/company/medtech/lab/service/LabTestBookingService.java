@@ -61,8 +61,6 @@ import java.util.UUID;
 @Service
 public class LabTestBookingService {
 
-    private static final BigDecimal GST_RATE = new BigDecimal("0.05");
-
     /** Mirrors the frontend's own collection-status -> booking-status derivation table. */
     private static final Map<CollectionStatus, BookingStatus> BOOKING_STATUS_FOR_COLLECTION = Map.of(
             CollectionStatus.SCHEDULED, BookingStatus.SAMPLE_COLLECTION_SCHEDULED,
@@ -204,9 +202,8 @@ public class LabTestBookingService {
         BigDecimal discount = (couponCode != null && !couponCode.isBlank())
                 ? couponService.redeem(franchise.getId(), couponCode, subtotal.add(collectionCharge))
                 : BigDecimal.ZERO;
-        BigDecimal taxable = subtotal.subtract(discount).max(BigDecimal.ZERO).add(collectionCharge);
-        BigDecimal gst = taxable.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalAmount = taxable.add(gst);
+        BigDecimal gst = itemGst(items, subtotal, discount);
+        BigDecimal totalAmount = subtotal.subtract(discount).max(BigDecimal.ZERO).add(collectionCharge).add(gst);
 
         LabTestBooking booking = new LabTestBooking();
         booking.setFranchiseId(franchise.getId());
@@ -296,7 +293,7 @@ public class LabTestBookingService {
         List<LabTestBookingItem> items = resolved.items();
 
         BigDecimal subtotal = items.stream().map(LabTestBookingItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal gst = subtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal gst = itemGst(items, subtotal, BigDecimal.ZERO);
         BigDecimal totalAmount = subtotal.add(gst);
         // Lets the owner backdate a walk-in entered after the fact (e.g. catching up paper records at day's end).
         LocalDateTime now = request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now();
@@ -380,6 +377,119 @@ public class LabTestBookingService {
         }
 
         return toResponseWithItems(booking);
+    }
+
+    /**
+     * Owner action — corrects a walk-in booking entered at the counter
+     * (wrong test picked, GST missing, mistyped name, etc). Only
+     * FRANCHISE_COUNTER bookings can be edited here; a patient's own online
+     * booking should be cancelled, not silently rewritten by the owner.
+     * Re-resolves items from scratch (same as creation) so totals/GST always
+     * reflect the current catalog + request, never a stale computation.
+     */
+    @Transactional
+    public LabTestBookingResponse updateWalkInBooking(String ownerEmail, String bookingId, WalkInBookingRequest request) {
+        boolean hasTests = request.getTestIds() != null && !request.getTestIds().isEmpty();
+        boolean hasPackage = request.getPackageId() != null && !request.getPackageId().isBlank();
+        if (hasTests == hasPackage) {
+            throw new BusinessException("Book either individual tests or a package, not both");
+        }
+
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        LabTestBooking booking = bookingRepository.findByIdAndFranchiseId(parseId(bookingId, "Booking"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        if (booking.getSource() != BookingSource.FRANCHISE_COUNTER) {
+            throw new BusinessException("Only walk-in bookings can be edited here");
+        }
+
+        ResolvedItems resolved = resolveItems(franchise, hasPackage, request.getPackageId(), request.getTestIds());
+        List<LabTestBookingItem> items = resolved.items();
+
+        BigDecimal subtotal = items.stream().map(LabTestBookingItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal gst = itemGst(items, subtotal, BigDecimal.ZERO);
+        BigDecimal totalAmount = subtotal.add(gst);
+
+        // Defaults to whatever was already recorded as paid, rather than 0, so an edit that isn't
+        // about payment (e.g. fixing GST) doesn't silently wipe out a payment already collected.
+        BigDecimal amountPaid = request.getAmountPaid() != null ? request.getAmountPaid() : booking.getAmountPaid();
+        if (amountPaid.compareTo(totalAmount) > 0) {
+            amountPaid = totalAmount;
+        }
+        PaymentStatus paymentStatus = resolvePaymentStatus(amountPaid, totalAmount);
+
+        String referralId = null;
+        String referralName = null;
+        BigDecimal referralCommission = null;
+        if (request.getReferralId() != null && !request.getReferralId().isBlank()) {
+            Referral referral = referralRepository.findByIdAndFranchiseId(parseId(request.getReferralId(), "Referral"), franchise.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Referral", "id", request.getReferralId()));
+            referralId = referral.getId().toString();
+            referralName = referral.getName();
+            referralCommission = referral.getCommissionType() == CommissionType.PERCENTAGE
+                    ? totalAmount.multiply(referral.getCommissionValue()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : referral.getCommissionValue();
+        }
+
+        String patientEmail = request.getPatientEmail() != null && !request.getPatientEmail().isBlank()
+                ? request.getPatientEmail().trim().toLowerCase()
+                : null;
+
+        booking.setPatientEmail(patientEmail);
+        booking.setCustomerName(request.getCustomerName());
+        booking.setCustomerPhone(request.getCustomerPhone());
+        booking.setPackageId(resolved.packageId() != null ? UUID.fromString(resolved.packageId()) : null);
+        booking.setPackageName(resolved.packageName());
+        booking.setSubtotal(subtotal);
+        booking.setGst(gst);
+        booking.setTotalAmount(totalAmount);
+        booking.setCouponCode(request.getCouponCode());
+        booking.setPaymentStatus(paymentStatus);
+        booking.setAmountPaid(amountPaid);
+        booking.setPaidAt(paymentStatus == PaymentStatus.SUCCESS ? (booking.getPaidAt() != null ? booking.getPaidAt() : LocalDateTime.now()) : null);
+        booking.setReferralId(referralId != null ? UUID.fromString(referralId) : null);
+        booking.setReferralName(referralName);
+        booking.setReferralCommission(referralCommission);
+        bookingRepository.save(booking);
+
+        bookingItemRepository.deleteByBookingId(booking.getId());
+        for (LabTestBookingItem item : items) {
+            item.setBookingId(booking.getId());
+            bookingItemRepository.save(item);
+        }
+
+        BigDecimal finalAmountPaid = amountPaid;
+        paymentRepository.findByBookingId(booking.getId()).ifPresent(payment -> {
+            payment.setPatientEmail(patientEmail);
+            payment.setPatientName(request.getCustomerName());
+            payment.setAmount(totalAmount);
+            payment.setAmountPaid(finalAmountPaid);
+            payment.setStatus(paymentStatus);
+            payment.setPaidAt(booking.getPaidAt());
+            paymentRepository.save(payment);
+        });
+
+        return toResponseWithItems(booking);
+    }
+
+    /**
+     * Owner action — removes a walk-in booking entirely (e.g. it was entered
+     * by mistake). Only FRANCHISE_COUNTER bookings can be deleted here; a
+     * patient's own online booking should be cancelled instead, never erased.
+     */
+    @Transactional
+    public void deleteWalkInBooking(String ownerEmail, String bookingId) {
+        Franchise franchise = franchiseService.getByOwnerEmail(ownerEmail);
+        LabTestBooking booking = bookingRepository.findByIdAndFranchiseId(parseId(bookingId, "Booking"), franchise.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        if (booking.getSource() != BookingSource.FRANCHISE_COUNTER) {
+            throw new BusinessException("Only walk-in bookings can be deleted here — cancel a patient booking instead.");
+        }
+
+        labReportRepository.findByBookingId(booking.getId()).ifPresent(labReportRepository::delete);
+        paymentHistoryRepository.deleteBySourceTypeAndSourceId(PaymentSourceType.BOOKING, booking.getId());
+        paymentRepository.findByBookingId(booking.getId()).ifPresent(paymentRepository::delete);
+        bookingItemRepository.deleteByBookingId(booking.getId());
+        bookingRepository.delete(booking);
     }
 
     /** Owner action — records an additional payment collected towards a booking (walk-in or otherwise), topping up whatever's already been paid. */
@@ -562,7 +672,7 @@ public class LabTestBookingService {
             packageName = combo.getName();
             int order = 0;
             for (LabTest test : combo.getTests()) {
-                items.add(newItem(test.getId(), test.getName(), test.getPrice(), order++));
+                items.add(newItem(test.getId(), test.getName(), test.getPrice(), test.getGstPercentage(), order++));
             }
         } else {
             int order = 0;
@@ -570,7 +680,7 @@ public class LabTestBookingService {
                 UUID testId = parseId(testIdStr, "LabTest");
                 LabTest test = labTestRepository.findByIdAndFranchiseId(testId, franchise.getId())
                         .orElseThrow(() -> new ResourceNotFoundException("LabTest", "id", testIdStr));
-                items.add(newItem(test.getId(), test.getName(), test.getPrice(), order++));
+                items.add(newItem(test.getId(), test.getName(), test.getPrice(), test.getGstPercentage(), order++));
             }
         }
 
@@ -592,13 +702,36 @@ public class LabTestBookingService {
         return franchise.getCollectionCharge();
     }
 
-    private LabTestBookingItem newItem(UUID labTestId, String name, BigDecimal price, int order) {
+    private LabTestBookingItem newItem(UUID labTestId, String name, BigDecimal price, BigDecimal gstPercentage, int order) {
         LabTestBookingItem item = new LabTestBookingItem();
         item.setLabTestId(labTestId);
         item.setItemName(name);
         item.setAmount(price);
+        item.setGstPercentage(gstPercentage != null ? gstPercentage : BigDecimal.ZERO);
         item.setItemOrder(order);
         return item;
+    }
+
+    /**
+     * Sums each item's own GST (snapshotted per test, not a flat platform-wide
+     * rate) — replaces the old hardcoded 5%-on-everything calculation. Any
+     * discount is spread proportionally across items before computing GST on
+     * the taxable remainder, same as how discount already reduces the taxable
+     * base for the flat-rate calculation this replaces.
+     */
+    private BigDecimal itemGst(List<LabTestBookingItem> items, BigDecimal subtotal, BigDecimal discount) {
+        BigDecimal ratio = BigDecimal.ONE;
+        if (discount != null && discount.compareTo(BigDecimal.ZERO) > 0 && subtotal.compareTo(BigDecimal.ZERO) > 0) {
+            ratio = subtotal.subtract(discount).max(BigDecimal.ZERO).divide(subtotal, 10, RoundingMode.HALF_UP);
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        for (LabTestBookingItem item : items) {
+            BigDecimal taxableAmount = item.getAmount().multiply(ratio);
+            BigDecimal itemGstAmount = taxableAmount.multiply(item.getGstPercentage())
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+            total = total.add(itemGstAmount);
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     private String displayName(UserAuth user) {
@@ -636,7 +769,8 @@ public class LabTestBookingService {
                 .map(i -> new LabTestBookingItemResponse(
                         i.getLabTestId() != null ? i.getLabTestId().toString() : null,
                         i.getItemName(),
-                        i.getAmount()
+                        i.getAmount(),
+                        i.getGstPercentage()
                 ))
                 .toList();
 

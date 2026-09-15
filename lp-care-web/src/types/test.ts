@@ -22,6 +22,8 @@ export interface PathologyTest {
   reportTurnaroundHours: number
   prescriptionRequired: boolean
   active: boolean
+  /** Percent, e.g. 5 for 5%. 0 = no GST charged for this test. */
+  gstPercentage: number
 }
 
 export interface TestPackage {

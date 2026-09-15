@@ -256,6 +256,8 @@ class LabTestBookingServiceTest {
         request.setPrice(new java.math.BigDecimal(price));
         request.setCategory(TestCategory.BLOOD);
         request.setReportTurnaroundHours(24);
+        // Explicit per-test GST — no more implicit flat-rate GST on every booking regardless of test config.
+        request.setGstPercentage(new java.math.BigDecimal("5"));
         return request;
     }
 

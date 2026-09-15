@@ -14,4 +14,7 @@ public interface LabTestBookingItemRepository extends JpaRepository<LabTestBooki
 
     /** Blocks a LabTest delete once it has real booking history — see LabTestService#deleteTest. */
     boolean existsByLabTestId(UUID labTestId);
+
+    /** Used when editing/deleting a walk-in booking — see LabTestBookingService#updateWalkInBooking/#deleteWalkInBooking. */
+    void deleteByBookingId(UUID bookingId);
 }

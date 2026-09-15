@@ -31,4 +31,8 @@ public class LabTestRequest {
     private Integer reportTurnaroundHours;
 
     private boolean prescriptionRequired;
+
+    /** Optional — GST percent (e.g. 5 for 5%). Null/omitted means 0, no tax. */
+    @DecimalMin(value = "0.0", inclusive = true)
+    private BigDecimal gstPercentage;
 }

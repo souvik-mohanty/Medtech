@@ -51,6 +51,13 @@ export function nowForDateTimeInput(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Converts an ISO date/time string to an <input type="datetime-local"> value ("yyyy-MM-ddTHH:mm"), in local time. */
+export function toDateTimeInputValue(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** Today as "yyyy-MM-dd", for an <input type="date"> min attribute. */
 export function todayForDateInput(): string {
   const d = new Date()

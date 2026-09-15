@@ -77,6 +77,7 @@ public class LabTestService {
         test.setPreparationInstructions(request.getPreparationInstructions());
         test.setReportTurnaroundHours(request.getReportTurnaroundHours());
         test.setPrescriptionRequired(request.isPrescriptionRequired());
+        test.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
 
         return toResponse(labTestRepository.save(test));
     }
@@ -106,6 +107,7 @@ public class LabTestService {
         test.setPreparationInstructions(request.getPreparationInstructions());
         test.setReportTurnaroundHours(request.getReportTurnaroundHours());
         test.setPrescriptionRequired(request.isPrescriptionRequired());
+        test.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
 
         return toResponse(labTestRepository.save(test));
     }
@@ -244,7 +246,8 @@ public class LabTestService {
                 test.getSampleType(),
                 test.getPreparationInstructions(),
                 test.getReportTurnaroundHours(),
-                test.isPrescriptionRequired()
+                test.isPrescriptionRequired(),
+                test.getGstPercentage()
         );
     }
 

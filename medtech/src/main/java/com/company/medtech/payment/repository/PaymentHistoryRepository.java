@@ -10,4 +10,7 @@ import java.util.UUID;
 public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, UUID> {
 
     List<PaymentHistory> findBySourceTypeAndSourceIdOrderByRecordedAtAsc(PaymentSourceType sourceType, UUID sourceId);
+
+    /** Used when deleting a walk-in booking — see LabTestBookingService#deleteWalkInBooking. */
+    void deleteBySourceTypeAndSourceId(PaymentSourceType sourceType, UUID sourceId);
 }

@@ -12,4 +12,5 @@ public class LabTestBookingItemResponse {
     private String testId;
     private String testName;
     private BigDecimal price;
+    private BigDecimal gstPercentage;
 }

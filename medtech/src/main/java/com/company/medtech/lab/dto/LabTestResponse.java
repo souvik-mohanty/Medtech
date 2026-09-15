@@ -21,4 +21,5 @@ public class LabTestResponse {
     private String preparationInstructions;
     private int reportTurnaroundHours;
     private boolean prescriptionRequired;
+    private BigDecimal gstPercentage;
 }

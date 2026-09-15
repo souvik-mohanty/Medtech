@@ -47,6 +47,24 @@ public class LabTestBookingController {
         );
     }
 
+    @PutMapping(value = "/{bookingId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<LabTestBookingResponse> updateWalkIn(
+            Authentication authentication,
+            @PathVariable String bookingId,
+            @Valid @RequestBody WalkInBookingRequest request
+    ) {
+        return ApiResponse.success(
+                "Walk-in booking updated",
+                labTestBookingService.updateWalkInBooking(authentication.getName(), bookingId, request)
+        );
+    }
+
+    @DeleteMapping("/{bookingId}")
+    public ApiResponse<Void> deleteWalkIn(Authentication authentication, @PathVariable String bookingId) {
+        labTestBookingService.deleteWalkInBooking(authentication.getName(), bookingId);
+        return ApiResponse.success("Walk-in booking deleted", null);
+    }
+
     @PatchMapping("/{bookingId}/mark-paid")
     public ApiResponse<LabTestBookingResponse> markPaid(Authentication authentication, @PathVariable String bookingId) {
         return ApiResponse.success("Marked paid", labTestBookingService.markPaid(authentication.getName(), bookingId));

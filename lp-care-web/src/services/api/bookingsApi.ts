@@ -208,3 +208,24 @@ export async function createWalkInBooking(input: CreateWalkInBookingInput): Prom
   })
   return toBooking(response.data.data)
 }
+
+/** Owner action — corrects a walk-in booking (wrong test, missing GST, mistyped name, etc). Only works on FRANCHISE_COUNTER bookings. */
+export async function updateWalkInBooking(id: string, input: CreateWalkInBookingInput): Promise<Booking> {
+  const response = await apiClient.put<{ data: BackendBooking }>(`/api/franchise/labtests/bookings/${id}`, {
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    patientEmail: input.patientEmail,
+    testIds: input.packageId ? undefined : input.testIds,
+    packageId: input.packageId,
+    couponCode: input.couponCode,
+    amountPaid: input.amountPaid,
+    referralId: input.referralId,
+    createdAt: input.createdAt,
+  })
+  return toBooking(response.data.data)
+}
+
+/** Owner action — removes a walk-in booking entirely. Only works on FRANCHISE_COUNTER bookings. */
+export async function deleteWalkInBooking(id: string): Promise<void> {
+  await apiClient.delete(`/api/franchise/labtests/bookings/${id}`)
+}

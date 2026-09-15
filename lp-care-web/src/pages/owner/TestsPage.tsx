@@ -49,6 +49,7 @@ const emptyTestForm: CreateTestInput = {
   preparationInstructions: "No special preparation required.",
   reportTurnaroundHours: 24,
   prescriptionRequired: false,
+  gstPercentage: 0,
 }
 
 const emptyPackageForm: CreatePackageInput = {
@@ -95,6 +96,7 @@ export function OwnerTestsPage() {
       preparationInstructions: test.preparationInstructions,
       reportTurnaroundHours: test.reportTurnaroundHours,
       prescriptionRequired: test.prescriptionRequired,
+      gstPercentage: test.gstPercentage,
     })
     setTestDialogOpen(true)
   }
@@ -215,6 +217,7 @@ export function OwnerTestsPage() {
                     <TableHead>Sample</TableHead>
                     <TableHead>Turnaround</TableHead>
                     <TableHead>Price</TableHead>
+                    <TableHead>GST</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -230,6 +233,7 @@ export function OwnerTestsPage() {
                       <TableCell className="text-sm text-muted-foreground">{t.sampleType}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{t.reportTurnaroundHours}h</TableCell>
                       <TableCell className="text-sm font-medium">{formatCurrency(t.price)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{t.gstPercentage > 0 ? `${t.gstPercentage}%` : "—"}</TableCell>
                       <TableCell>
                         <Badge variant={t.active ? "secondary" : "outline"}>{t.active ? "Active" : "Inactive"}</Badge>
                       </TableCell>
@@ -344,6 +348,10 @@ export function OwnerTestsPage() {
                 <Label htmlFor="t-turnaround">Report turnaround (hours)</Label>
                 <Input id="t-turnaround" type="number" min={1} value={testForm.reportTurnaroundHours} onChange={(e) => setTestForm({ ...testForm, reportTurnaroundHours: Number(e.target.value) })} required />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="t-gst">GST % (optional)</Label>
+              <Input id="t-gst" type="number" min={0} max={100} step="0.01" placeholder="0" value={testForm.gstPercentage} onChange={(e) => setTestForm({ ...testForm, gstPercentage: Number(e.target.value) })} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="t-prep">Preparation instructions</Label>

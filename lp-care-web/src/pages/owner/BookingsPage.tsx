@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Ban, Eye, IndianRupee, Loader2, Search, Upload } from "lucide-react"
+import { Ban, Eye, IndianRupee, Loader2, Pencil, Search, Trash2, Upload } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +14,8 @@ import { StatusBadge } from "@/components/common/StatusBadge"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
-import { cancelBooking, getOwnerBookings, recordPayment, updateCollectionStatus } from "@/services/api/bookingsApi"
+import { WalkInBookingDialog } from "@/components/owner/WalkInBookingDialog"
+import { cancelBooking, deleteWalkInBooking, getOwnerBookings, recordPayment, updateCollectionStatus } from "@/services/api/bookingsApi"
 import { uploadLabReport, viewOwnerReport } from "@/services/api/labReportApi"
 import { errorMessage } from "@/lib/apiClient"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -30,6 +31,8 @@ export function OwnerBookingsPage() {
   const [paymentTarget, setPaymentTarget] = useState<Booking | null>(null)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [viewingReportId, setViewingReportId] = useState<string | null>(null)
+  const [editTarget, setEditTarget] = useState<Booking | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null)
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const { data: bookings, isLoading } = useQuery({
@@ -65,6 +68,17 @@ export function OwnerBookingsPage() {
       toast.success("Payment recorded")
       setPaymentTarget(null)
       setPaymentAmount("")
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteWalkInBooking(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
+      queryClient.invalidateQueries({ queryKey: ["bookings"] })
+      toast.success("Walk-in booking deleted")
+      setDeleteTarget(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
@@ -245,9 +259,21 @@ export function OwnerBookingsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button size="icon-sm" variant="ghost" disabled={cancelled} onClick={() => setCancelTarget(b.id)}>
-                        <Ban className="size-3.5 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {b.source === "FRANCHISE_COUNTER" && (
+                          <>
+                            <Button size="icon-sm" variant="ghost" title="Edit booking" onClick={() => setEditTarget(b)}>
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button size="icon-sm" variant="ghost" title="Delete booking" onClick={() => setDeleteTarget(b)}>
+                              <Trash2 className="size-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                        <Button size="icon-sm" variant="ghost" title="Cancel booking" disabled={cancelled} onClick={() => setCancelTarget(b.id)}>
+                          <Ban className="size-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -307,6 +333,23 @@ export function OwnerBookingsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <WalkInBookingDialog
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        editingBooking={editTarget}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this walk-in booking?"
+        description="This permanently removes the booking, its payment record, and any uploaded report. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+      />
     </div>
   )
 }

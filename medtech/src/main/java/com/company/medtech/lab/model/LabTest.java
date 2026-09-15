@@ -54,6 +54,10 @@ public class LabTest {
     @Column(name = "prescription_required", nullable = false)
     private boolean prescriptionRequired;
 
+    /** Optional per-test GST rate (percent, e.g. 5 = 5%) — defaults to 0, not the old hardcoded flat 5% every booking used to charge. */
+    @Column(name = "gst_percentage", nullable = false)
+    private BigDecimal gstPercentage = BigDecimal.ZERO;
+
     public UUID getId() {
         return id;
     }
@@ -148,5 +152,13 @@ public class LabTest {
 
     public void setPrescriptionRequired(boolean prescriptionRequired) {
         this.prescriptionRequired = prescriptionRequired;
+    }
+
+    public BigDecimal getGstPercentage() {
+        return gstPercentage;
+    }
+
+    public void setGstPercentage(BigDecimal gstPercentage) {
+        this.gstPercentage = gstPercentage;
     }
 }

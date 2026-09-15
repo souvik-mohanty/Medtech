@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -9,20 +9,23 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getAllPackages, getAllTests } from "@/services/api/testsApi"
-import { createWalkInBooking } from "@/services/api/bookingsApi"
+import { createWalkInBooking, updateWalkInBooking } from "@/services/api/bookingsApi"
 import { getReferrals } from "@/services/api/referralsApi"
 import { getCoupons } from "@/services/api/couponsApi"
 import { errorMessage } from "@/lib/apiClient"
-import { formatCurrency, nowForDateTimeInput } from "@/lib/utils"
+import { formatCurrency, nowForDateTimeInput, toDateTimeInputValue } from "@/lib/utils"
+import type { Booking } from "@/types"
 
 type PaymentChoice = "PENDING" | "PARTIAL" | "FULL"
 
 interface WalkInBookingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** When set, the dialog edits this existing walk-in booking instead of creating a new one. */
+  editingBooking?: Booking | null
 }
 
-export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogProps) {
+export function WalkInBookingDialog({ open, onOpenChange, editingBooking }: WalkInBookingDialogProps) {
   const queryClient = useQueryClient()
   const { data: tests } = useQuery({ queryKey: ["owner-tests"], queryFn: getAllTests, enabled: open })
   const { data: packages } = useQuery({ queryKey: ["owner-packages"], queryFn: getAllPackages, enabled: open })
@@ -38,7 +41,9 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("FULL")
   const [partialAmount, setPartialAmount] = useState("")
   const [referralId, setReferralId] = useState<string>("")
-  const [couponId, setCouponId] = useState<string>("")
+  // Tracked by code (not id) so an edit can prefill from the booking's own
+  // couponCode string before the coupons list has even finished loading.
+  const [couponCode, setCouponCode] = useState<string>("")
   const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
   const activeTests = (tests ?? []).filter((t) => t.active)
@@ -46,7 +51,7 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
   const activeReferrals = (referrals ?? []).filter((r) => r.active)
   const now = new Date()
   const activeCoupons = (coupons ?? []).filter((c) => c.active && new Date(c.expiresAt) >= now)
-  const selectedCoupon = activeCoupons.find((c) => c.id === couponId)
+  const selectedCoupon = activeCoupons.find((c) => c.code === couponCode)
 
   const estimatedSubtotal = useMemo(() => {
     if (mode === "PACKAGE") return activePackages.find((p) => p.id === packageId)?.discountedPrice ?? 0
@@ -64,17 +69,54 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
     setPaymentChoice("FULL")
     setPartialAmount("")
     setReferralId("")
-    setCouponId("")
+    setCouponCode("")
     setEntryDateTime(nowForDateTimeInput())
   }
+
+  const initializedForId = useRef<string | null>(null)
+
+  // Prefill the form from the booking being edited. Runs once per dialog
+  // open (or per booking, if switching which row is being edited without
+  // closing the dialog) — reset() above already clears everything on close.
+  useEffect(() => {
+    if (!open || !editingBooking || initializedForId.current === editingBooking.id) return
+    initializedForId.current = editingBooking.id
+
+    setCustomerName(editingBooking.patientName)
+    setCustomerPhone(editingBooking.phone ?? "")
+    // patientId falls back to the raw email when no real patient account is linked yet — see bookingsApi#toBooking.
+    setPatientEmail(editingBooking.patientId?.includes("@") ? editingBooking.patientId : "")
+    if (editingBooking.packageId) {
+      setMode("PACKAGE")
+      setPackageId(editingBooking.packageId)
+      setTestIds([])
+    } else {
+      setMode("TESTS")
+      setTestIds(editingBooking.items.map((i) => i.testId).filter(Boolean))
+      setPackageId("")
+    }
+    setReferralId(editingBooking.referralId ?? "")
+    setCouponCode(editingBooking.couponCode ?? "")
+    setEntryDateTime(toDateTimeInputValue(editingBooking.createdAt))
+    if (editingBooking.paymentStatus === "SUCCESS") {
+      setPaymentChoice("FULL")
+      setPartialAmount("")
+    } else if (editingBooking.paymentStatus === "PENDING") {
+      setPaymentChoice("PENDING")
+      setPartialAmount("")
+    } else {
+      setPaymentChoice("PARTIAL")
+      setPartialAmount(String(editingBooking.amountPaid))
+    }
+  }, [open, editingBooking])
 
   function toggleTest(id: string) {
     setTestIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
   }
 
   const mutation = useMutation({
-    mutationFn: () =>
-      createWalkInBooking({
+    mutationFn: () => {
+      const input = {
         customerName,
         customerPhone: customerPhone || undefined,
         patientEmail: patientEmail || undefined,
@@ -88,13 +130,15 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
         amountPaid:
           paymentChoice === "FULL" ? Number.MAX_SAFE_INTEGER : paymentChoice === "PARTIAL" ? Number(partialAmount) || 0 : 0,
         referralId: referralId || undefined,
-        couponCode: selectedCoupon?.code,
+        couponCode: couponCode || undefined,
         createdAt: entryDateTime || undefined,
-      }),
+      }
+      return editingBooking ? updateWalkInBooking(editingBooking.id, input) : createWalkInBooking(input)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-bookings"] })
       queryClient.invalidateQueries({ queryKey: ["owner-collection"] })
-      toast.success("Walk-in booking added")
+      toast.success(editingBooking ? "Walk-in booking updated" : "Walk-in booking added")
       reset()
       onOpenChange(false)
     },
@@ -107,10 +151,10 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
     (paymentChoice !== "PARTIAL" || (Number(partialAmount) > 0 && Number(partialAmount) < estimatedTotal))
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next) }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { reset(); initializedForId.current = null }; onOpenChange(next) }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Walk-in booking</DialogTitle>
+          <DialogTitle>{editingBooking ? "Edit walk-in booking" : "Walk-in booking"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -238,14 +282,14 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
 
           <div className="space-y-1.5">
             <Label>Coupon (optional)</Label>
-            <Select value={couponId || "NONE"} onValueChange={(v) => setCouponId(v === "NONE" ? "" : v)}>
+            <Select value={couponCode || "NONE"} onValueChange={(v) => setCouponCode(v === "NONE" ? "" : v)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="NONE">None</SelectItem>
                 {activeCoupons.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
+                  <SelectItem key={c.id} value={c.code}>
                     {c.code} — {c.type === "FLAT" ? formatCurrency(c.value) : `${c.value}%`} off
                   </SelectItem>
                 ))}
@@ -264,7 +308,7 @@ export function WalkInBookingDialog({ open, onOpenChange }: WalkInBookingDialogP
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!canSubmit || mutation.isPending}>
               {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Add booking
+              {editingBooking ? "Save changes" : "Add booking"}
             </Button>
           </DialogFooter>
         </form>

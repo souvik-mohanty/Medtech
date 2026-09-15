@@ -40,6 +40,10 @@ public class LabTestBookingItem {
     @Column(name = "item_order", nullable = false)
     private int itemOrder;
 
+    /** Snapshot of the test's GST rate at booking time, same idea as name/amount above. */
+    @Column(name = "gst_percentage", nullable = false)
+    private BigDecimal gstPercentage = BigDecimal.ZERO;
+
     public UUID getId() {
         return id;
     }
@@ -86,5 +90,13 @@ public class LabTestBookingItem {
 
     public void setItemOrder(int itemOrder) {
         this.itemOrder = itemOrder;
+    }
+
+    public BigDecimal getGstPercentage() {
+        return gstPercentage;
+    }
+
+    public void setGstPercentage(BigDecimal gstPercentage) {
+        this.gstPercentage = gstPercentage;
     }
 }
