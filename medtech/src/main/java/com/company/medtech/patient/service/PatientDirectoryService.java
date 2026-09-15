@@ -19,20 +19,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * Owner-facing "who has done business with me" directory — composed from
- * lab bookings, medicine bills, and doctor appointments (grouped by
- * patient email) rather than a standalone patient table, same as the mock
- * did. Walk-in entries with no linked email carry no identity to group by
- * and are excluded here — they still show up in their own raw list pages
- * (Bookings/Orders/Walk-in Billing), just not folded into this directory.
- * There's no real concept of deactivating a patient account yet, so every
- * row currently reports ACTIVE.
+ * lab bookings, medicine bills, and doctor appointments rather than a
+ * standalone patient table, same as the mock did. A record with a real
+ * patient email groups by that email (one row per account); a walk-in
+ * (Express Billing) entry with no linked account has no email to group by,
+ * so it groups instead by its own customer name + phone — one row per
+ * distinct walk-in customer, so they show up here too, just without an
+ * email. There's no real concept of deactivating a patient account yet, so
+ * every row currently reports ACTIVE.
  */
 @Service
 @Transactional(readOnly = true)
@@ -68,42 +69,53 @@ public class PatientDirectoryService {
         List<Bill> bills = billRepository.findByFranchiseIdOrderByCreatedAtDesc(franchise.getId());
         List<DoctorAppointment> appointments = doctorAppointmentRepository.findByFranchiseIdOrderByCreatedAtDesc(franchise.getId());
 
-        Set<String> emails = new HashSet<>();
-        bookings.forEach(b -> { if (b.getPatientEmail() != null) emails.add(b.getPatientEmail()); });
-        bills.forEach(b -> { if (b.getPatientEmail() != null) emails.add(b.getPatientEmail()); });
-        appointments.forEach(a -> { if (a.getPatientEmail() != null) emails.add(a.getPatientEmail()); });
+        Map<String, PatientGroup> groups = new LinkedHashMap<>();
+
+        for (LabTestBooking b : bookings) {
+            PatientGroup group = groupFor(groups, b.getPatientEmail(), b.getCustomerName(), b.getCustomerPhone());
+            group.bookingCount++;
+            group.touch(b.getCreatedAt().toLocalDate());
+        }
+        for (Bill b : bills) {
+            PatientGroup group = groupFor(groups, b.getPatientEmail(), b.getCustomerName(), b.getCustomerPhone());
+            group.orderCount++;
+            group.touch(b.getCreatedAt().toLocalDate());
+        }
+        for (DoctorAppointment a : appointments) {
+            PatientGroup group = groupFor(groups, a.getPatientEmail(), a.getCustomerName(), null);
+            group.appointmentCount++;
+            group.touch(a.getCreatedAt().toLocalDate());
+        }
 
         List<PatientSummaryResponse> results = new ArrayList<>();
-        for (String email : emails) {
-            long bookingCount = bookings.stream().filter(b -> email.equals(b.getPatientEmail())).count();
-            long orderCount = bills.stream().filter(b -> email.equals(b.getPatientEmail())).count();
-            long appointmentCount = appointments.stream().filter(a -> email.equals(a.getPatientEmail())).count();
+        for (PatientGroup group : groups.values()) {
+            String id;
+            String fullName;
+            String phone;
 
-            LocalDate lastActivity = List.of(
-                            bookings.stream().filter(b -> email.equals(b.getPatientEmail())).map(b -> b.getCreatedAt().toLocalDate()),
-                            bills.stream().filter(b -> email.equals(b.getPatientEmail())).map(b -> b.getCreatedAt().toLocalDate()),
-                            appointments.stream().filter(a -> email.equals(a.getPatientEmail())).map(a -> a.getCreatedAt().toLocalDate())
-                    ).stream()
-                    .flatMap(s -> s)
-                    .max(LocalDate::compareTo)
-                    .orElse(null);
-
-            UserAuth user = userAuthRepository.findByEmail(email).orElse(null);
-            String fullName = (user != null && user.getFullName() != null && !user.getFullName().isBlank())
-                    ? user.getFullName() : email;
-            String phone = user != null
-                    ? patientProfileRepository.findByUserId(user.getId()).map(PatientProfile::getPhone).orElse(null)
-                    : null;
+            if (group.email != null) {
+                UserAuth user = userAuthRepository.findByEmail(group.email).orElse(null);
+                id = user != null ? user.getId().toString() : group.email;
+                fullName = (user != null && user.getFullName() != null && !user.getFullName().isBlank())
+                        ? user.getFullName() : group.email;
+                phone = user != null
+                        ? patientProfileRepository.findByUserId(user.getId()).map(PatientProfile::getPhone).orElse(group.customerPhone)
+                        : group.customerPhone;
+            } else {
+                id = group.key.replace(':', '-');
+                fullName = group.customerName != null ? group.customerName : "Walk-in customer";
+                phone = group.customerPhone;
+            }
 
             results.add(new PatientSummaryResponse(
-                    user != null ? user.getId().toString() : email,
+                    id,
                     fullName,
                     phone,
-                    email,
-                    bookingCount,
-                    orderCount,
-                    appointmentCount,
-                    lastActivity,
+                    group.email,
+                    group.bookingCount,
+                    group.orderCount,
+                    group.appointmentCount,
+                    group.lastActivity,
                     "ACTIVE"
             ));
         }
@@ -124,5 +136,56 @@ public class PatientDirectoryService {
 
         results.sort(Comparator.comparing(PatientSummaryResponse::getLastActivityDate, Comparator.nullsLast(Comparator.reverseOrder())));
         return results;
+    }
+
+    private PatientGroup groupFor(Map<String, PatientGroup> groups, String email, String customerName, String customerPhone) {
+        String key = keyFor(email, customerName, customerPhone);
+        PatientGroup group = groups.computeIfAbsent(key, k -> {
+            PatientGroup g = new PatientGroup();
+            g.key = k;
+            return g;
+        });
+        if (group.email == null && email != null && !email.isBlank()) {
+            group.email = email.trim();
+        }
+        if (group.customerName == null && customerName != null && !customerName.isBlank()) {
+            group.customerName = customerName.trim();
+        }
+        if (group.customerPhone == null && customerPhone != null && !customerPhone.isBlank()) {
+            group.customerPhone = customerPhone.trim();
+        }
+        return group;
+    }
+
+    private String keyFor(String email, String customerName, String customerPhone) {
+        if (email != null && !email.isBlank()) {
+            return "email:" + email.trim().toLowerCase();
+        }
+        return "walkin:" + slug(customerName) + "-" + slug(customerPhone);
+    }
+
+    private String slug(String s) {
+        if (s == null || s.isBlank()) {
+            return "unknown";
+        }
+        String slug = s.trim().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+)|(-+$)", "");
+        return slug.isBlank() ? "unknown" : slug;
+    }
+
+    private static final class PatientGroup {
+        String key;
+        String email;
+        String customerName;
+        String customerPhone;
+        long bookingCount;
+        long orderCount;
+        long appointmentCount;
+        LocalDate lastActivity;
+
+        void touch(LocalDate date) {
+            if (lastActivity == null || date.isAfter(lastActivity)) {
+                lastActivity = date;
+            }
+        }
     }
 }

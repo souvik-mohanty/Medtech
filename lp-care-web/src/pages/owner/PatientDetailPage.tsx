@@ -17,17 +17,25 @@ export function OwnerPatientDetailPage() {
   const { patientId } = useParams<{ patientId: string }>()
 
   const { data: patients, isLoading: loadingPatient } = useQuery({ queryKey: ["owner-patients"], queryFn: () => getPatientSummaries() })
-  const { data: bookings, isLoading: loadingBookings } = useQuery({
-    queryKey: ["bookings", patientId],
-    queryFn: () => getOwnerBookings({ patientId }),
-    enabled: !!patientId,
-  })
+  const { data: allBookings, isLoading: loadingBookings } = useQuery({ queryKey: ["owner-bookings"], queryFn: () => getOwnerBookings() })
   const { data: allOrders, isLoading: loadingOrders } = useQuery({ queryKey: ["owner-orders"], queryFn: getOwnerOrders })
   const { data: allAppointments, isLoading: loadingAppointments } = useQuery({ queryKey: ["owner-doctor-appointments"], queryFn: getOwnerAppointments })
 
   const patient = patients?.find((p) => p.id === patientId)
-  const orders = (allOrders ?? []).filter((o) => o.patientEmail === patient?.email)
-  const appointments = (allAppointments ?? []).filter((a) => a.patientEmail === patient?.email)
+
+  // A patient with an email has a real account — match records by that account's
+  // identity, same as before. A walk-in (Express Billing) customer has no account
+  // to match by, so records are matched by the same name+phone combo the owner
+  // directory itself grouped them by — see PatientDirectoryService#groupFor.
+  const bookings = (allBookings ?? []).filter((b) =>
+    patient?.email ? b.patientId === patient.id : !b.patientId && b.patientName === patient?.fullName && (!patient?.phone || b.phone === patient.phone)
+  )
+  const orders = (allOrders ?? []).filter((o) =>
+    patient?.email ? o.patientEmail === patient.email : !o.patientEmail && o.customerName === patient?.fullName && (!patient?.phone || o.customerPhone === patient.phone)
+  )
+  const appointments = (allAppointments ?? []).filter((a) =>
+    patient?.email ? a.patientEmail === patient.email : !a.patientEmail && a.customerName === patient?.fullName
+  )
 
   if (loadingPatient) {
     return (
