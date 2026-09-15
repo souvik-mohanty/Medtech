@@ -98,6 +98,9 @@ export function BookTestPage() {
     return cart.selectedTests.map((t) => ({ testId: t.id, testName: t.name, price: t.price }))
   }, [cart.selectedPackage, cart.selectedTests])
 
+  // Each test's own GST rate (0 by default) — no more flat 5% assumed on everything.
+  const gstableTests = cart.selectedPackage ? cart.selectedPackage.tests : cart.selectedTests
+
   const rawSubtotal = items.reduce((sum, i) => sum + i.price, 0)
   const packageDiscount = cart.selectedPackage ? cart.selectedPackage.totalPrice - cart.selectedPackage.discountedPrice : 0
   const postPackageAmount = Math.max(0, rawSubtotal - packageDiscount)
@@ -110,7 +113,8 @@ export function BookTestPage() {
   const totalDiscount = packageDiscount + couponDiscount
   const collectionCharge = cart.collectionMethod === "HOME_COLLECTION" ? HOME_COLLECTION_CHARGE : 0
   const taxable = Math.max(0, rawSubtotal - totalDiscount) + collectionCharge
-  const gst = Math.round(taxable * 0.05)
+  const discountRatio = rawSubtotal > 0 ? Math.max(0, rawSubtotal - totalDiscount) / rawSubtotal : 1
+  const gst = Math.round(gstableTests.reduce((sum, t) => sum + (t.price * discountRatio * (t.gstPercentage ?? 0)) / 100, 0))
   const grandTotal = taxable + gst
 
   const couponMutation = useMutation({
@@ -568,7 +572,7 @@ export function BookTestPage() {
               <span>{collectionCharge > 0 ? formatCurrency(collectionCharge) : "Free"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">GST (5%)</span>
+              <span className="text-muted-foreground">GST</span>
               <span>{formatCurrency(gst)}</span>
             </div>
           </div>

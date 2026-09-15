@@ -53,11 +53,22 @@ export function WalkInBookingDialog({ open, onOpenChange, editingBooking }: Walk
   const activeCoupons = (coupons ?? []).filter((c) => c.active && new Date(c.expiresAt) >= now)
   const selectedCoupon = activeCoupons.find((c) => c.code === couponCode)
 
+  const selectedTests = useMemo(() => {
+    if (mode === "PACKAGE") return activePackages.find((p) => p.id === packageId)?.tests ?? []
+    return activeTests.filter((t) => testIds.includes(t.id))
+  }, [mode, packageId, testIds, activeTests, activePackages])
+
   const estimatedSubtotal = useMemo(() => {
     if (mode === "PACKAGE") return activePackages.find((p) => p.id === packageId)?.discountedPrice ?? 0
-    return activeTests.filter((t) => testIds.includes(t.id)).reduce((sum, t) => sum + t.price, 0)
-  }, [mode, packageId, testIds, activeTests, activePackages])
-  const estimatedTotal = Math.round(estimatedSubtotal * 1.05)
+    return selectedTests.reduce((sum, t) => sum + t.price, 0)
+  }, [mode, packageId, activePackages, selectedTests])
+
+  // Real per-test GST (each test's own rate, 0 by default) — no more flat 5% assumed on everything.
+  const estimatedGst = useMemo(
+    () => selectedTests.reduce((sum, t) => sum + (t.price * (t.gstPercentage ?? 0)) / 100, 0),
+    [selectedTests]
+  )
+  const estimatedTotal = Math.round(estimatedSubtotal + estimatedGst)
 
   function reset() {
     setCustomerName("")
