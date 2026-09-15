@@ -14,12 +14,13 @@ import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { getOwnerBookings, markBookingCashPaid, recordPayment } from "@/services/api/bookingsApi"
 import { getOwnerOrders, markOrderPaid } from "@/services/api/ordersApi"
+import { getOwnerAppointments, markAppointmentPaid } from "@/services/api/appointmentsApi"
 import { errorMessage } from "@/lib/apiClient"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import type { Booking, PaymentHistoryEntry } from "@/types"
 
 interface PendingRow {
-  kind: "Lab Test" | "Medicine"
+  kind: "Lab Test" | "Medicine" | "Doctor Appointment"
   id: string
   who: string
   summary: string
@@ -35,6 +36,7 @@ export function OwnerPendingOrdersPage() {
   const queryClient = useQueryClient()
   const { data: bookings, isLoading: loadingBookings } = useQuery({ queryKey: ["owner-bookings"], queryFn: () => getOwnerBookings() })
   const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ["owner-orders"], queryFn: getOwnerOrders })
+  const { data: appointments, isLoading: loadingAppointments } = useQuery({ queryKey: ["owner-doctor-appointments"], queryFn: getOwnerAppointments })
   const [paymentTarget, setPaymentTarget] = useState<Booking | null>(null)
   const [paymentAmount, setPaymentAmount] = useState("")
 
@@ -65,8 +67,21 @@ export function OwnerPendingOrdersPage() {
       paymentHistory: o.paymentHistory,
     }))
 
-  const pending = [...pendingBookings, ...pendingOrders]
-  const isLoading = loadingBookings || loadingOrders
+  const pendingAppointments: PendingRow[] = (appointments ?? [])
+    .filter((a) => a.status === "PAYMENT_PENDING")
+    .map((a) => ({
+      kind: "Doctor Appointment",
+      id: a.id,
+      who: a.patientName ?? a.customerName ?? a.patientEmail ?? "Walk-in",
+      summary: `Dr. ${a.doctorName} · ${a.scheduleDate} ${a.startTime.slice(0, 5)}`,
+      isWalkIn: a.customerName != null,
+      totalAmount: a.fee,
+      amountPaid: 0,
+      paymentHistory: [],
+    }))
+
+  const pending = [...pendingBookings, ...pendingOrders, ...pendingAppointments]
+  const isLoading = loadingBookings || loadingOrders || loadingAppointments
 
   const markBookingPaidMutation = useMutation({
     mutationFn: (id: string) => markBookingCashPaid(id),
@@ -87,6 +102,15 @@ export function OwnerPendingOrdersPage() {
     onError: (err) => toast.error(errorMessage(err)),
   })
 
+  const markAppointmentPaidMutation = useMutation({
+    mutationFn: (id: string) => markAppointmentPaid(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-doctor-appointments"] })
+      toast.success("Marked fully paid")
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+
   const paymentMutation = useMutation({
     mutationFn: () => recordPayment(paymentTarget!.id, Number(paymentAmount)),
     onSuccess: () => {
@@ -99,9 +123,15 @@ export function OwnerPendingOrdersPage() {
     onError: (err) => toast.error(errorMessage(err)),
   })
 
+  function mutationFor(kind: PendingRow["kind"]) {
+    if (kind === "Lab Test") return markBookingPaidMutation
+    if (kind === "Medicine") return markOrderPaidMutation
+    return markAppointmentPaidMutation
+  }
+
   return (
     <div>
-      <PageHeader title="Pending Online Orders" description="Lab bookings and medicine orders — walk-in or online — still awaiting full payment." />
+      <PageHeader title="Pending Orders" description="How much is still owed and needs settling — lab bookings, medicine orders, and doctor appointments, walk-in or online." />
 
       {isLoading ? (
         <LoadingState rows={5} />
@@ -111,6 +141,7 @@ export function OwnerPendingOrdersPage() {
         <div className="space-y-3">
           {pending.map((r) => {
             const pendingAmount = r.totalAmount - r.amountPaid
+            const mutation = mutationFor(r.kind)
             return (
               <DashboardSectionCard key={`${r.kind}-${r.id}`} className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -141,14 +172,10 @@ export function OwnerPendingOrdersPage() {
                   )}
                   <Button
                     size="sm"
-                    disabled={
-                      r.kind === "Lab Test"
-                        ? markBookingPaidMutation.isPending && markBookingPaidMutation.variables === r.id
-                        : markOrderPaidMutation.isPending && markOrderPaidMutation.variables === r.id
-                    }
-                    onClick={() => (r.kind === "Lab Test" ? markBookingPaidMutation.mutate(r.id) : markOrderPaidMutation.mutate(r.id))}
+                    disabled={mutation.isPending && mutation.variables === r.id}
+                    onClick={() => mutation.mutate(r.id)}
                   >
-                    {(r.kind === "Lab Test" ? markBookingPaidMutation.isPending && markBookingPaidMutation.variables === r.id : markOrderPaidMutation.isPending && markOrderPaidMutation.variables === r.id) ? (
+                    {mutation.isPending && mutation.variables === r.id ? (
                       <Loader2 className="size-3.5 animate-spin" />
                     ) : (
                       <CheckCircle2 className="size-3.5" />

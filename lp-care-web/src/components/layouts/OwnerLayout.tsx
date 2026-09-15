@@ -26,7 +26,7 @@ const navItems: DashboardNavItem[] = [
   { to: "/owner/tests", label: "Tests & Packages", icon: FlaskConical },
   { to: "/owner/bookings", label: "Bookings", icon: Calendar },
   { to: "/owner/walk-in", label: "Walk-in Billing", icon: Store },
-  { to: "/owner/pending-orders", label: "Pending Online Orders", icon: Clock },
+  { to: "/owner/pending-orders", label: "Pending Orders", icon: Clock },
   { to: "/owner/inventory", label: "Inventory", icon: Package },
   { to: "/owner/orders", label: "Medicine Orders", icon: ShoppingBag },
   { to: "/owner/payments", label: "Payments", icon: CreditCard },
