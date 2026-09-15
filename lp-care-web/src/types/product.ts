@@ -1,5 +1,7 @@
 import type { PaymentHistoryEntry } from "./payment"
 
+export type SalesChannel = "ONLINE" | "WALKIN" | "BOTH"
+
 export interface Product {
   id: string
   name: string
@@ -15,6 +17,7 @@ export interface Product {
   gstPercentage: number
   prescriptionRequired: boolean
   active: boolean
+  salesChannel: SalesChannel
 }
 
 export type OrderStatus = "CREATED" | "PAYMENT_PENDING" | "PAID" | "CONFIRMED" | "DISPATCHED" | "DELIVERED" | "CANCELLED"

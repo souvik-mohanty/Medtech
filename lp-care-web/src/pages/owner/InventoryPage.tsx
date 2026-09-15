@@ -44,7 +44,14 @@ function emptyForm(): ProductInput {
     stockQuantity: 0,
     gstPercentage: 0,
     prescriptionRequired: false,
+    salesChannel: "BOTH",
   }
+}
+
+const CHANNEL_LABELS: Record<Product["salesChannel"], string> = {
+  ONLINE: "Online only",
+  WALKIN: "Walk-in only",
+  BOTH: "Online + Walk-in",
 }
 
 export function OwnerInventoryPage() {
@@ -84,6 +91,7 @@ export function OwnerInventoryPage() {
       stockQuantity: product.stockQuantity,
       gstPercentage: product.gstPercentage,
       prescriptionRequired: product.prescriptionRequired,
+      salesChannel: product.salesChannel,
     })
     setDialogOpen(true)
   }
@@ -149,6 +157,7 @@ export function OwnerInventoryPage() {
                 <TableHead>Stock</TableHead>
                 <TableHead>Purchased</TableHead>
                 <TableHead>Supplier</TableHead>
+                <TableHead>Channel</TableHead>
                 <TableHead>Expiry</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
@@ -170,6 +179,9 @@ export function OwnerInventoryPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.purchaseDate ? formatDate(p.purchaseDate) : "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.supplier || "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    <Badge variant="outline" className="text-muted-foreground">{CHANNEL_LABELS[p.salesChannel]}</Badge>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {p.expiryDate ? (
                       <span className={daysUntil(p.expiryDate) < 0 ? "text-destructive" : daysUntil(p.expiryDate) <= EXPIRY_SOON_DAYS ? "text-warning-foreground" : ""}>
@@ -223,13 +235,38 @@ export function OwnerInventoryPage() {
                 <Input id="p-price" type="number" min={0} value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: Number(e.target.value) })} required />
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor="p-purchase-price">Purchase price (₹)</Label>
+                <Input
+                  id="p-purchase-price"
+                  type="number"
+                  min={0}
+                  value={form.purchasePrice ?? ""}
+                  onChange={(e) => setForm({ ...form, purchasePrice: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="p-gst">GST (%)</Label>
                 <Input id="p-gst" type="number" min={0} value={form.gstPercentage} onChange={(e) => setForm({ ...form, gstPercentage: Number(e.target.value) })} />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="p-stock">Stock quantity</Label>
+                <Input id="p-stock" type="number" min={0} value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: Number(e.target.value) })} required />
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="p-stock">Stock quantity</Label>
-              <Input id="p-stock" type="number" min={0} value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: Number(e.target.value) })} required />
+              <Label>Sell via</Label>
+              <Select value={form.salesChannel} onValueChange={(v) => setForm({ ...form, salesChannel: v as Product["salesChannel"] })}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BOTH">Online + Walk-in</SelectItem>
+                  <SelectItem value="ONLINE">Online only</SelectItem>
+                  <SelectItem value="WALKIN">Walk-in only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Controls whether patients see this online, whether it appears in walk-in billing, or both.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

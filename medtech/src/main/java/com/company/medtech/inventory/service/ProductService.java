@@ -7,6 +7,7 @@ import com.company.medtech.inventory.dto.InventoryInsightsResponse;
 import com.company.medtech.inventory.dto.ProductRequest;
 import com.company.medtech.inventory.dto.ProductResponse;
 import com.company.medtech.inventory.model.Product;
+import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
@@ -37,11 +38,12 @@ public class ProductService {
                 .toList();
     }
 
-    /** Used by patients browsing a franchise's catalog to place an online order. */
+    /** Used by patients browsing a franchise's catalog to place an online order — only products offered online. */
     public List<ProductResponse> listForFranchise(String franchiseId) {
         UUID id = parseFranchiseId(franchiseId);
         return productRepository.findByFranchiseIdAndActiveTrue(id)
                 .stream()
+                .filter(p -> p.getSalesChannel() != SalesChannel.WALKIN)
                 .map(this::toResponse)
                 .toList();
     }
@@ -62,6 +64,7 @@ public class ProductService {
         product.setStockQuantity(request.getStockQuantity());
         product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
         product.setPrescriptionRequired(request.isPrescriptionRequired());
+        product.setSalesChannel(request.getSalesChannel() != null ? request.getSalesChannel() : SalesChannel.BOTH);
         product.setActive(true);
 
         return toResponse(productRepository.save(product));
@@ -80,6 +83,7 @@ public class ProductService {
         product.setStockQuantity(request.getStockQuantity());
         product.setGstPercentage(request.getGstPercentage() != null ? request.getGstPercentage() : BigDecimal.ZERO);
         product.setPrescriptionRequired(request.isPrescriptionRequired());
+        product.setSalesChannel(request.getSalesChannel() != null ? request.getSalesChannel() : SalesChannel.BOTH);
         return toResponse(productRepository.save(product));
     }
 
@@ -162,7 +166,8 @@ public class ProductService {
                 product.getStockQuantity(),
                 product.getGstPercentage(),
                 product.isPrescriptionRequired(),
-                product.isActive()
+                product.isActive(),
+                product.getSalesChannel()
         );
     }
 }

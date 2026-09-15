@@ -1,5 +1,6 @@
 package com.company.medtech.inventory.dto;
 
+import com.company.medtech.inventory.model.SalesChannel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -21,7 +22,8 @@ public class ProductRequest {
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal sellingPrice;
 
-    /** Optional cost price, used for inventory valuation insights. */
+    /** Cost price — mandatory, used for inventory valuation insights. */
+    @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal purchasePrice;
 
@@ -44,4 +46,7 @@ public class ProductRequest {
     private BigDecimal gstPercentage;
 
     private boolean prescriptionRequired;
+
+    /** Where this product is offered — defaults to BOTH if omitted. */
+    private SalesChannel salesChannel;
 }

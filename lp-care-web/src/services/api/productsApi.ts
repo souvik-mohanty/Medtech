@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/apiClient"
-import type { Product } from "@/types"
+import type { Product, SalesChannel } from "@/types"
 
 interface BackendProduct {
   id: string
@@ -15,6 +15,7 @@ interface BackendProduct {
   gstPercentage: number
   prescriptionRequired: boolean
   active: boolean
+  salesChannel: SalesChannel
 }
 
 function toProduct(p: BackendProduct): Product {
@@ -32,6 +33,7 @@ function toProduct(p: BackendProduct): Product {
     gstPercentage: p.gstPercentage,
     prescriptionRequired: p.prescriptionRequired,
     active: p.active,
+    salesChannel: p.salesChannel,
   }
 }
 

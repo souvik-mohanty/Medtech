@@ -32,7 +32,7 @@ export function WalkInMedicinePurchaseDialog({ open, onOpenChange }: WalkInMedic
   const [referralId, setReferralId] = useState("")
   const [entryDateTime, setEntryDateTime] = useState(nowForDateTimeInput())
 
-  const activeProducts = (products ?? []).filter((p) => p.active)
+  const activeProducts = (products ?? []).filter((p) => p.active && p.salesChannel !== "ONLINE")
   const now = new Date()
   const activeCoupons = (coupons ?? []).filter((c) => c.active && new Date(c.expiresAt) >= now)
   const selectedCoupon = activeCoupons.find((c) => c.id === couponId)

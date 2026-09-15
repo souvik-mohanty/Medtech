@@ -14,6 +14,7 @@ import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.franchise.service.FranchiseService;
 import com.company.medtech.inventory.model.Product;
+import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
 import com.company.medtech.notification.model.NotificationType;
 import com.company.medtech.notification.service.NotificationService;
@@ -96,7 +97,7 @@ public class BillingService {
         bill.setCustomerName(request.getCustomerName());
         bill.setCustomerPhone(request.getCustomerPhone());
 
-        reserveStockAndAddItems(bill, franchise.getId(), request.getItems());
+        reserveStockAndAddItems(bill, franchise.getId(), request.getItems(), SalesChannel.WALKIN);
         applyTotals(bill);
         applyDiscount(bill, request.getDiscountType(), request.getDiscountValue());
         bill.setCouponCode(request.getDiscountValue() != null ? request.getCouponCode() : null);
@@ -153,11 +154,11 @@ public class BillingService {
         bill.setCreatedAt(LocalDateTime.now());
 
         if (isCash) {
-            checkStockAndAddItems(bill, franchise.getId(), request.getItems());
+            checkStockAndAddItems(bill, franchise.getId(), request.getItems(), SalesChannel.ONLINE);
             applyTotals(bill);
             bill.setStatus(OrderStatus.PAYMENT_PENDING);
         } else {
-            reserveStockAndAddItems(bill, franchise.getId(), request.getItems());
+            reserveStockAndAddItems(bill, franchise.getId(), request.getItems(), SalesChannel.ONLINE);
             applyTotals(bill);
             bill.setStatus(OrderStatus.PAID);
             bill.setPaidAt(bill.getCreatedAt());
@@ -264,7 +265,7 @@ public class BillingService {
      * transaction — including every decrement already applied earlier in
      * the loop — rolls back.
      */
-    private void reserveStockAndAddItems(Bill bill, UUID franchiseId, List<BillItemRequest> requestedItems) {
+    private void reserveStockAndAddItems(Bill bill, UUID franchiseId, List<BillItemRequest> requestedItems, SalesChannel channel) {
         int order = 0;
         for (BillItemRequest req : requestedItems) {
             UUID productId = parseId(req.getProductId(), "Product");
@@ -272,6 +273,7 @@ public class BillingService {
                     .orElseThrow(() -> new BusinessException("Product not found in your inventory: " + req.getProductId()));
 
             assertNotExpired(product);
+            assertSoldVia(product, channel);
             BillItem item = toBillItem(product, req.getQuantity(), order++);
 
             if (productRepository.decrementStock(product.getId(), req.getQuantity()) == 0) {
@@ -282,7 +284,7 @@ public class BillingService {
         }
     }
 
-    private void checkStockAndAddItems(Bill bill, UUID franchiseId, List<BillItemRequest> requestedItems) {
+    private void checkStockAndAddItems(Bill bill, UUID franchiseId, List<BillItemRequest> requestedItems, SalesChannel channel) {
         int order = 0;
         for (BillItemRequest req : requestedItems) {
             UUID productId = parseId(req.getProductId(), "Product");
@@ -290,6 +292,7 @@ public class BillingService {
                     .orElseThrow(() -> new BusinessException("Product not found: " + req.getProductId()));
 
             assertNotExpired(product);
+            assertSoldVia(product, channel);
 
             if (product.getStockQuantity() < req.getQuantity()) {
                 throw new BusinessException("Insufficient stock for " + product.getName());
@@ -303,6 +306,14 @@ public class BillingService {
     private void assertNotExpired(Product product) {
         if (product.getExpiryDate() != null && product.getExpiryDate().isBefore(LocalDate.now())) {
             throw new BusinessException("'" + product.getName() + "' has expired and cannot be sold");
+        }
+    }
+
+    /** A product's owner-set channel (ONLINE/WALKIN/BOTH) gates which sale path can actually sell it. */
+    private void assertSoldVia(Product product, SalesChannel channel) {
+        if (product.getSalesChannel() != SalesChannel.BOTH && product.getSalesChannel() != channel) {
+            String path = channel == SalesChannel.ONLINE ? "online orders" : "walk-in sale";
+            throw new BusinessException("'" + product.getName() + "' is not available for " + path);
         }
     }
 

@@ -13,6 +13,7 @@ import com.company.medtech.franchise.model.PaymentGatewayConfig;
 import com.company.medtech.franchise.model.PaymentProvider;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.inventory.model.Product;
+import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,6 +110,35 @@ class BillingServiceTest {
                 .hasMessageContaining("expired");
 
         assertThat(productRepository.findById(expired.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void rejectsCounterSaleOfAnOnlineOnlyProduct() {
+        Product onlineOnly = newProduct("Online Only Vitamin", new BigDecimal("30.00"), 10, BigDecimal.ZERO);
+        onlineOnly.setSalesChannel(SalesChannel.ONLINE);
+        productRepository.save(onlineOnly);
+
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(onlineOnly.getId(), 1)));
+
+        assertThatThrownBy(() -> billingService.createCounterBill(franchise.getOwnerEmail(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not available for walk-in sale");
+
+        assertThat(productRepository.findById(onlineOnly.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void rejectsOnlineOrderOfAWalkInOnlyProduct() {
+        Product walkInOnly = newProduct("Counter Only Syrup", new BigDecimal("30.00"), 10, BigDecimal.ZERO);
+        walkInOnly.setSalesChannel(SalesChannel.WALKIN);
+        productRepository.save(walkInOnly);
+
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(walkInOnly.getId(), 1)), PaymentMode.CASH);
+
+        assertThatThrownBy(() -> billingService.createOnlineOrder("patient@example.com", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not available for online orders");
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.inventory.dto.InventoryInsightsResponse;
 import com.company.medtech.inventory.model.Product;
+import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,17 @@ class ProductServiceTest {
         assertThat(insights.getExpired()).extracting("name").containsExactly("Already Expired");
     }
 
+    @Test
+    void patientCatalogExcludesWalkInOnlyProducts() {
+        newProductWithChannel("Online Item", SalesChannel.ONLINE);
+        newProductWithChannel("Both Item", SalesChannel.BOTH);
+        newProductWithChannel("Walk-in Only Item", SalesChannel.WALKIN);
+
+        assertThat(productService.listForFranchise(franchise.getId().toString()))
+                .extracting("name")
+                .containsExactlyInAnyOrder("Online Item", "Both Item");
+    }
+
     private void newProduct(String name, String sellingPrice, int stock, LocalDate expiryDate) {
         Product product = new Product();
         product.setFranchiseId(franchise.getId());
@@ -74,6 +86,18 @@ class ProductServiceTest {
         product.setGstPercentage(BigDecimal.ZERO);
         product.setExpiryDate(expiryDate);
         product.setActive(true);
+        productRepository.save(product);
+    }
+
+    private void newProductWithChannel(String name, SalesChannel channel) {
+        Product product = new Product();
+        product.setFranchiseId(franchise.getId());
+        product.setName(name);
+        product.setSellingPrice(new BigDecimal("10.00"));
+        product.setStockQuantity(5);
+        product.setGstPercentage(BigDecimal.ZERO);
+        product.setActive(true);
+        product.setSalesChannel(channel);
         productRepository.save(product);
     }
 }

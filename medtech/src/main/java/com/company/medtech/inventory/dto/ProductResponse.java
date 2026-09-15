@@ -1,5 +1,6 @@
 package com.company.medtech.inventory.dto;
 
+import com.company.medtech.inventory.model.SalesChannel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -23,4 +24,5 @@ public class ProductResponse {
     private BigDecimal gstPercentage;
     private boolean prescriptionRequired;
     private boolean active;
+    private SalesChannel salesChannel;
 }

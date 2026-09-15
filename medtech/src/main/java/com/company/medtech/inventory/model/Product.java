@@ -2,6 +2,8 @@ package com.company.medtech.inventory.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -31,7 +33,7 @@ public class Product {
     @Column(name = "selling_price", nullable = false)
     private BigDecimal sellingPrice;
 
-    /** Cost price — optional, used for inventory valuation insights. */
+    /** Cost price — mandatory for new products (ProductRequest enforces it), used for inventory valuation insights. Column stays nullable for products created before this was required. */
     @Column(name = "purchase_price")
     private BigDecimal purchasePrice;
 
@@ -61,6 +63,11 @@ public class Product {
 
     @Column(name = "prescription_required", nullable = false)
     private boolean prescriptionRequired = false;
+
+    /** Which storefronts this product is offered through — see ProductService for how each channel is filtered/enforced. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sales_channel", nullable = false)
+    private SalesChannel salesChannel = SalesChannel.BOTH;
 
     public UUID getId() {
         return id;
@@ -172,5 +179,13 @@ public class Product {
 
     public void setPrescriptionRequired(boolean prescriptionRequired) {
         this.prescriptionRequired = prescriptionRequired;
+    }
+
+    public SalesChannel getSalesChannel() {
+        return salesChannel;
+    }
+
+    public void setSalesChannel(SalesChannel salesChannel) {
+        this.salesChannel = salesChannel;
     }
 }
