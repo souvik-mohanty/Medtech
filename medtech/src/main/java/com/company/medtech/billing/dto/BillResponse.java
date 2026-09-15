@@ -21,6 +21,17 @@ public class BillResponse {
     private String customerName;
     private String customerPhone;
     private String patientEmail;
+    /** Resolved display name for a PATIENT_ONLINE bill — the patient's account name, falling back to their email. Null for a counter sale (see customerName instead). */
+    private String patientName;
+    /** The ordering patient's mobile number for a PATIENT_ONLINE bill, snapshotted at order time. */
+    private String mobileNumber;
+    private String addressId;
+    private String addressLabel;
+    private String addressLine1;
+    private String addressLine2;
+    private String addressCity;
+    private String addressState;
+    private String addressPincode;
     private List<BillItemResponse> items;
     private BigDecimal subtotal;
     private BigDecimal gstAmount;

@@ -50,6 +50,33 @@ public class Bill {
     @Column(name = "patient_email")
     private String patientEmail;
 
+    // PATIENT_ONLINE only — snapshotted from the request/address at order time, same
+    // convention as LabTestBooking's address_* columns, so the owner can actually
+    // deliver the order without chasing the patient for details after the fact.
+    @Column(name = "mobile_number")
+    private String mobileNumber;
+
+    @Column(name = "address_id")
+    private UUID addressId;
+
+    @Column(name = "address_label")
+    private String addressLabel;
+
+    @Column(name = "address_line1")
+    private String addressLine1;
+
+    @Column(name = "address_line2")
+    private String addressLine2;
+
+    @Column(name = "address_city")
+    private String addressCity;
+
+    @Column(name = "address_state")
+    private String addressState;
+
+    @Column(name = "address_pincode")
+    private String addressPincode;
+
     /**
      * itemOrder is set explicitly by BillingService (see BillItem#setItemOrder),
      * not managed automatically via @OrderColumn — that relied on Hibernate
@@ -157,6 +184,70 @@ public class Bill {
 
     public void setPatientEmail(String patientEmail) {
         this.patientEmail = patientEmail;
+    }
+
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
+
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
+    }
+
+    public UUID getAddressId() {
+        return addressId;
+    }
+
+    public void setAddressId(UUID addressId) {
+        this.addressId = addressId;
+    }
+
+    public String getAddressLabel() {
+        return addressLabel;
+    }
+
+    public void setAddressLabel(String addressLabel) {
+        this.addressLabel = addressLabel;
+    }
+
+    public String getAddressLine1() {
+        return addressLine1;
+    }
+
+    public void setAddressLine1(String addressLine1) {
+        this.addressLine1 = addressLine1;
+    }
+
+    public String getAddressLine2() {
+        return addressLine2;
+    }
+
+    public void setAddressLine2(String addressLine2) {
+        this.addressLine2 = addressLine2;
+    }
+
+    public String getAddressCity() {
+        return addressCity;
+    }
+
+    public void setAddressCity(String addressCity) {
+        this.addressCity = addressCity;
+    }
+
+    public String getAddressState() {
+        return addressState;
+    }
+
+    public void setAddressState(String addressState) {
+        this.addressState = addressState;
+    }
+
+    public String getAddressPincode() {
+        return addressPincode;
+    }
+
+    public void setAddressPincode(String addressPincode) {
+        this.addressPincode = addressPincode;
     }
 
     public List<BillItem> getItems() {

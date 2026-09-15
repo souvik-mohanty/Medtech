@@ -78,7 +78,7 @@ export function OwnerPaymentsPage() {
     const orderRows: PaymentRow[] = (orders ?? []).map((o) => ({
       id: o.id,
       purpose: "Medicine Order",
-      who: o.customerName ?? o.patientEmail ?? "Walk-in",
+      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Walk-in",
       type: o.paymentMode === "CASH" ? "Cash" : "Online",
       amount: o.totalAmount,
       rawStatus: o.status,

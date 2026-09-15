@@ -39,6 +39,17 @@ export interface Order {
   customerName?: string
   customerPhone?: string
   patientEmail?: string
+  /** Resolved display name for a PATIENT_ONLINE order — the patient's account name. Undefined for a counter sale (see customerName instead). */
+  patientName?: string
+  /** The ordering patient's mobile number, snapshotted at order time — PATIENT_ONLINE only. */
+  mobileNumber?: string
+  addressId?: string
+  addressLabel?: string
+  addressLine1?: string
+  addressLine2?: string
+  addressCity?: string
+  addressState?: string
+  addressPincode?: string
   items: OrderItem[]
   subtotal: number
   gstAmount: number

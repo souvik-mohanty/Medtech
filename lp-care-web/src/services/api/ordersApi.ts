@@ -8,6 +8,15 @@ interface BackendOrder {
   customerName: string | null
   customerPhone: string | null
   patientEmail: string | null
+  patientName: string | null
+  mobileNumber: string | null
+  addressId: string | null
+  addressLabel: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  addressCity: string | null
+  addressState: string | null
+  addressPincode: string | null
   items: OrderItem[]
   subtotal: number
   gstAmount: number
@@ -33,6 +42,15 @@ function toOrder(o: BackendOrder): Order {
     customerName: o.customerName ?? undefined,
     customerPhone: o.customerPhone ?? undefined,
     patientEmail: o.patientEmail ?? undefined,
+    patientName: o.patientName ?? undefined,
+    mobileNumber: o.mobileNumber ?? undefined,
+    addressId: o.addressId ?? undefined,
+    addressLabel: o.addressLabel ?? undefined,
+    addressLine1: o.addressLine1 ?? undefined,
+    addressLine2: o.addressLine2 ?? undefined,
+    addressCity: o.addressCity ?? undefined,
+    addressState: o.addressState ?? undefined,
+    addressPincode: o.addressPincode ?? undefined,
     items: o.items,
     subtotal: o.subtotal,
     gstAmount: o.gstAmount,
@@ -57,6 +75,8 @@ export interface CreateOrderInput {
   franchiseId: string
   items: { productId: string; quantity: number }[]
   paymentMode: OrderPaymentMode
+  mobileNumber: string
+  addressId: string
 }
 
 /** CASH always succeeds and stays PAYMENT_PENDING until the owner confirms it. ONLINE requires the franchise to have a payment gateway configured. */

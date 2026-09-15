@@ -1,5 +1,7 @@
 package com.company.medtech.billing.service;
 
+import com.company.medtech.auth.model.UserAuth;
+import com.company.medtech.auth.repository.UserAuthRepository;
 import com.company.medtech.billing.dto.*;
 import com.company.medtech.billing.model.Bill;
 import com.company.medtech.billing.model.BillItem;
@@ -18,6 +20,10 @@ import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
 import com.company.medtech.notification.model.NotificationType;
 import com.company.medtech.notification.service.NotificationService;
+import com.company.medtech.patient.model.PatientAddress;
+import com.company.medtech.patient.model.PatientProfile;
+import com.company.medtech.patient.repository.PatientAddressRepository;
+import com.company.medtech.patient.service.PatientProfileService;
 import com.company.medtech.payment.dto.PaymentHistoryEntryResponse;
 import com.company.medtech.payment.model.PaymentHistory;
 import com.company.medtech.payment.model.PaymentSourceType;
@@ -46,6 +52,9 @@ public class BillingService {
     private final ReferralRepository referralRepository;
     private final NotificationService notificationService;
     private final PaymentHistoryRepository paymentHistoryRepository;
+    private final UserAuthRepository userAuthRepository;
+    private final PatientProfileService patientProfileService;
+    private final PatientAddressRepository patientAddressRepository;
 
     public BillingService(
             BillRepository billRepository,
@@ -55,7 +64,10 @@ public class BillingService {
             InvoicePdfService invoicePdfService,
             ReferralRepository referralRepository,
             NotificationService notificationService,
-            PaymentHistoryRepository paymentHistoryRepository
+            PaymentHistoryRepository paymentHistoryRepository,
+            UserAuthRepository userAuthRepository,
+            PatientProfileService patientProfileService,
+            PatientAddressRepository patientAddressRepository
     ) {
         this.billRepository = billRepository;
         this.productRepository = productRepository;
@@ -65,6 +77,9 @@ public class BillingService {
         this.invoicePdfService = invoicePdfService;
         this.referralRepository = referralRepository;
         this.paymentHistoryRepository = paymentHistoryRepository;
+        this.userAuthRepository = userAuthRepository;
+        this.patientProfileService = patientProfileService;
+        this.patientAddressRepository = patientAddressRepository;
     }
 
     private void recordPaymentHistory(UUID billId, BigDecimal amount) {
@@ -146,10 +161,24 @@ public class BillingService {
                     "This store hasn't set up online payments yet. Choose cash payment instead.");
         }
 
+        UserAuth patient = userAuthRepository.findByEmail(patientEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", patientEmail));
+        PatientProfile profile = patientProfileService.getOrCreateProfile(patient.getId());
+        PatientAddress address = patientAddressRepository.findByIdAndPatientProfileId(parseId(request.getAddressId(), "Address"), profile.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Address", "id", request.getAddressId()));
+
         Bill bill = new Bill();
         bill.setFranchiseId(franchise.getId());
         bill.setSource(BillSource.PATIENT_ONLINE);
         bill.setPatientEmail(patientEmail);
+        bill.setMobileNumber(request.getMobileNumber());
+        bill.setAddressId(address.getId());
+        bill.setAddressLabel(address.getLabel());
+        bill.setAddressLine1(address.getLine1());
+        bill.setAddressLine2(address.getLine2());
+        bill.setAddressCity(address.getCity());
+        bill.setAddressState(address.getState());
+        bill.setAddressPincode(address.getPincode());
         bill.setPaymentMode(request.getPaymentMode());
         bill.setCreatedAt(LocalDateTime.now());
 
@@ -419,6 +448,11 @@ public class BillingService {
         }
     }
 
+    /** Resolved display name for a PATIENT_ONLINE bill — the account's real name, so the owner isn't stuck reading a raw email. */
+    private String displayName(UserAuth user) {
+        return user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail();
+    }
+
     private BillResponse toResponse(Bill bill) {
         List<BillItemResponse> itemResponses = bill.getItems().stream()
                 .map(i -> new BillItemResponse(
@@ -432,6 +466,10 @@ public class BillingService {
                 .map(h -> new PaymentHistoryEntryResponse(h.getAmount(), h.getRecordedAt()))
                 .toList();
 
+        String patientName = bill.getPatientEmail() != null
+                ? userAuthRepository.findByEmail(bill.getPatientEmail()).map(this::displayName).orElse(bill.getPatientEmail())
+                : null;
+
         return new BillResponse(
                 bill.getId().toString(),
                 bill.getFranchiseId().toString(),
@@ -439,6 +477,15 @@ public class BillingService {
                 bill.getCustomerName(),
                 bill.getCustomerPhone(),
                 bill.getPatientEmail(),
+                patientName,
+                bill.getMobileNumber(),
+                bill.getAddressId() != null ? bill.getAddressId().toString() : null,
+                bill.getAddressLabel(),
+                bill.getAddressLine1(),
+                bill.getAddressLine2(),
+                bill.getAddressCity(),
+                bill.getAddressState(),
+                bill.getAddressPincode(),
                 itemResponses,
                 bill.getSubtotal(),
                 bill.getGstAmount(),

@@ -57,7 +57,7 @@ export function OwnerPendingOrdersPage() {
     .map((o) => ({
       kind: "Medicine",
       id: o.id,
-      who: o.patientEmail ?? o.customerName ?? "Walk-in",
+      who: o.patientName ?? o.customerName ?? o.patientEmail ?? "Walk-in",
       summary: `#${o.id} · ${o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}`,
       isWalkIn: o.source === "FRANCHISE_COUNTER",
       totalAmount: o.totalAmount,

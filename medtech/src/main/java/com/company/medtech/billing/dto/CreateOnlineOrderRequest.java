@@ -22,4 +22,11 @@ public class CreateOnlineOrderRequest {
     /** CASH is always accepted; ONLINE requires the franchise to have an active payment gateway. */
     @NotNull
     private PaymentMode paymentMode;
+
+    @NotBlank
+    private String mobileNumber;
+
+    /** One of the patient's own saved addresses (see patient/PatientAddressController) — required so the owner can actually deliver the order. */
+    @NotBlank
+    private String addressId;
 }

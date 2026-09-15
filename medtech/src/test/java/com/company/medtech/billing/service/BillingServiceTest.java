@@ -1,13 +1,17 @@
 package com.company.medtech.billing.service;
 
+import com.company.medtech.auth.model.UserAuth;
+import com.company.medtech.auth.repository.UserAuthRepository;
 import com.company.medtech.billing.dto.BillItemRequest;
 import com.company.medtech.billing.dto.BillResponse;
 import com.company.medtech.billing.dto.CreateCounterBillRequest;
 import com.company.medtech.billing.dto.CreateOnlineOrderRequest;
 import com.company.medtech.billing.model.DiscountType;
 import com.company.medtech.billing.model.PaymentMode;
+import com.company.medtech.common.constants.AppConstants;
 import com.company.medtech.common.enums.OrderStatus;
 import com.company.medtech.common.exceptions.BusinessException;
+import com.company.medtech.common.exceptions.ResourceNotFoundException;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.model.PaymentGatewayConfig;
 import com.company.medtech.franchise.model.PaymentProvider;
@@ -15,6 +19,10 @@ import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.inventory.model.Product;
 import com.company.medtech.inventory.model.SalesChannel;
 import com.company.medtech.inventory.repository.ProductRepository;
+import com.company.medtech.patient.model.PatientAddress;
+import com.company.medtech.patient.model.PatientProfile;
+import com.company.medtech.patient.repository.PatientAddressRepository;
+import com.company.medtech.patient.repository.PatientProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,9 +56,20 @@ class BillingServiceTest {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private UserAuthRepository userAuthRepository;
+
+    @Autowired
+    private PatientProfileRepository patientProfileRepository;
+
+    @Autowired
+    private PatientAddressRepository patientAddressRepository;
+
     private Franchise franchise;
     private Product paracetamol;
     private Product bandage;
+    private String patientEmail;
+    private String addressId;
 
     @BeforeEach
     void setUp() {
@@ -61,6 +80,28 @@ class BillingServiceTest {
 
         paracetamol = newProduct("Paracetamol", new BigDecimal("25.00"), 5, new BigDecimal("12.00"));
         bandage = newProduct("Bandage", new BigDecimal("40.00"), 2, BigDecimal.ZERO);
+
+        patientEmail = "patient-" + UUID.randomUUID() + "@example.com";
+        UserAuth patientUser = new UserAuth();
+        patientUser.setEmail(patientEmail);
+        patientUser.setRole(AppConstants.ROLE_PATIENT);
+        patientUser.setActive(true);
+        patientUser.setFullName("Test Patient");
+        patientUser = userAuthRepository.save(patientUser);
+
+        PatientProfile profile = new PatientProfile();
+        profile.setUserId(patientUser.getId());
+        profile = patientProfileRepository.save(profile);
+
+        PatientAddress address = new PatientAddress();
+        address.setPatientProfileId(profile.getId());
+        address.setLabel("Home");
+        address.setLine1("221B Baker Street");
+        address.setCity("Bhubaneswar");
+        address.setState("Odisha");
+        address.setPincode("751001");
+        address = patientAddressRepository.save(address);
+        addressId = address.getId().toString();
     }
 
     @Test
@@ -136,7 +177,7 @@ class BillingServiceTest {
 
         CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(walkInOnly.getId(), 1)), PaymentMode.CASH);
 
-        assertThatThrownBy(() -> billingService.createOnlineOrder("patient@example.com", request))
+        assertThatThrownBy(() -> billingService.createOnlineOrder(patientEmail, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("not available for online orders");
     }
@@ -209,7 +250,7 @@ class BillingServiceTest {
     void cashOnlineOrderAlwaysSucceedsAndStaysPending() {
         CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.CASH);
 
-        BillResponse response = billingService.createOnlineOrder("patient@example.com", request);
+        BillResponse response = billingService.createOnlineOrder(patientEmail, request);
 
         assertThat(response.getStatus()).isEqualTo(OrderStatus.PAYMENT_PENDING);
         assertThat(response.getInvoiceNumber()).isNull();
@@ -221,7 +262,7 @@ class BillingServiceTest {
     void onlineOrderRejectedWithoutActiveGateway() {
         CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.ONLINE);
 
-        assertThatThrownBy(() -> billingService.createOnlineOrder("patient@example.com", request))
+        assertThatThrownBy(() -> billingService.createOnlineOrder(patientEmail, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("online payments");
     }
@@ -238,7 +279,7 @@ class BillingServiceTest {
 
         CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.ONLINE);
 
-        BillResponse response = billingService.createOnlineOrder("patient@example.com", request);
+        BillResponse response = billingService.createOnlineOrder(patientEmail, request);
 
         assertThat(response.getStatus()).isEqualTo(OrderStatus.PAID);
         assertThat(response.getInvoiceNumber()).isNotNull();
@@ -248,7 +289,7 @@ class BillingServiceTest {
     @Test
     void ownerCanMarkACashOnlineOrderPaid() {
         CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 2)), PaymentMode.CASH);
-        BillResponse placed = billingService.createOnlineOrder("patient@example.com", request);
+        BillResponse placed = billingService.createOnlineOrder(patientEmail, request);
 
         BillResponse paid = billingService.markPaid(franchise.getOwnerEmail(), placed.getId());
 
@@ -259,9 +300,32 @@ class BillingServiceTest {
 
     @Test
     void patientSeesTheirOwnOrders() {
-        billingService.createOnlineOrder("patient@example.com", onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.CASH));
+        billingService.createOnlineOrder(patientEmail, onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.CASH));
 
-        assertThat(billingService.listForPatient("patient@example.com")).hasSize(1);
+        assertThat(billingService.listForPatient(patientEmail)).hasSize(1);
+    }
+
+    @Test
+    void onlineOrderSnapshotsNamePhoneAndAddressForTheOwner() {
+        BillResponse response = billingService.createOnlineOrder(patientEmail, onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.CASH));
+
+        assertThat(response.getPatientName()).isEqualTo("Test Patient");
+        assertThat(response.getMobileNumber()).isEqualTo("9999999999");
+        assertThat(response.getAddressLine1()).isEqualTo("221B Baker Street");
+        assertThat(response.getAddressCity()).isEqualTo("Bhubaneswar");
+
+        BillResponse fromOwnerList = billingService.listForOwner(franchise.getOwnerEmail()).get(0);
+        assertThat(fromOwnerList.getPatientName()).isEqualTo("Test Patient");
+        assertThat(fromOwnerList.getMobileNumber()).isEqualTo("9999999999");
+    }
+
+    @Test
+    void onlineOrderRejectedWithAnAddressBelongingToSomeoneElse() {
+        CreateOnlineOrderRequest request = onlineOrderRequest(List.of(itemRequest(paracetamol.getId(), 1)), PaymentMode.CASH);
+        request.setAddressId(UUID.randomUUID().toString());
+
+        assertThatThrownBy(() -> billingService.createOnlineOrder(patientEmail, request))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     private CreateOnlineOrderRequest onlineOrderRequest(List<BillItemRequest> items, PaymentMode paymentMode) {
@@ -269,6 +333,8 @@ class BillingServiceTest {
         request.setFranchiseId(franchise.getId().toString());
         request.setItems(items);
         request.setPaymentMode(paymentMode);
+        request.setMobileNumber("9999999999");
+        request.setAddressId(addressId);
         return request;
     }
 
