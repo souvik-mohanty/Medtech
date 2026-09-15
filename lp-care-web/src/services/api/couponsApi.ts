@@ -1,40 +1,58 @@
-import { mockDelay } from "@/lib/utils"
-import { mockCoupons } from "@/services/mock/coupons"
-import type { Coupon } from "@/types"
+import { apiClient } from "@/lib/apiClient"
+import { getFranchiseId } from "@/services/api/franchiseApi"
+import type { Coupon, CouponType } from "@/types"
 
-let coupons: Coupon[] = structuredClone(mockCoupons)
-
-export async function getCoupons(): Promise<Coupon[]> {
-  await mockDelay()
-  return coupons
+interface BackendCoupon {
+  id: string
+  code: string
+  type: CouponType
+  value: number
+  description: string | null
+  minOrderAmount: number | null
+  expiresAt: string
+  active: boolean
+  usageLimit: number | null
+  usageCount: number
 }
 
-/** The backend is authoritative on validity/value — this mirrors that check for the demo flow. */
-export async function validateCoupon(code: string, orderAmount: number): Promise<Coupon> {
-  await mockDelay(500)
-  const coupon = coupons.find((c) => c.code.toUpperCase() === code.trim().toUpperCase())
-  if (!coupon) throw new Error("This coupon code doesn't exist.")
-  if (!coupon.active) throw new Error("This coupon has expired.")
-  if (new Date(coupon.expiresAt) < new Date()) throw new Error("This coupon has expired.")
-  if (coupon.minOrderAmount && orderAmount < coupon.minOrderAmount) {
-    throw new Error(`This coupon requires a minimum order of ₹${coupon.minOrderAmount}.`)
+function toCoupon(c: BackendCoupon): Coupon {
+  return {
+    id: c.id,
+    code: c.code,
+    type: c.type,
+    value: c.value,
+    description: c.description ?? "",
+    minOrderAmount: c.minOrderAmount ?? undefined,
+    expiresAt: c.expiresAt,
+    active: c.active,
+    usageCount: c.usageCount,
+    usageLimit: c.usageLimit ?? undefined,
   }
-  return coupon
+}
+
+/** Owner-facing — every coupon for their own franchise. */
+export async function getCoupons(): Promise<Coupon[]> {
+  const response = await apiClient.get<{ data: BackendCoupon[] }>("/api/franchise/coupons")
+  return response.data.data.map(toCoupon)
+}
+
+/** Checked (not yet redeemed) against the one franchise this deployment serves — see CouponService#redeem for the actual apply-at-checkout step. */
+export async function validateCoupon(code: string, orderAmount: number): Promise<Coupon> {
+  const franchiseId = await getFranchiseId()
+  const response = await apiClient.get<{ data: BackendCoupon }>(`/api/patient/franchises/${franchiseId}/coupons/validate`, {
+    params: { code, orderAmount },
+  })
+  return toCoupon(response.data.data)
 }
 
 export type CreateCouponInput = Omit<Coupon, "id" | "active" | "usageCount">
 
 export async function createCoupon(input: CreateCouponInput): Promise<Coupon> {
-  await mockDelay(600)
-  const coupon: Coupon = { ...input, id: `cp-${Date.now()}`, active: true, usageCount: 0 }
-  coupons = [coupon, ...coupons]
-  return coupon
+  const response = await apiClient.post<{ data: BackendCoupon }>("/api/franchise/coupons", input)
+  return toCoupon(response.data.data)
 }
 
 export async function toggleCouponActive(id: string): Promise<Coupon> {
-  await mockDelay(400)
-  coupons = coupons.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
-  const updated = coupons.find((c) => c.id === id)
-  if (!updated) throw new Error("Coupon not found")
-  return updated
+  const response = await apiClient.patch<{ data: BackendCoupon }>(`/api/franchise/coupons/${id}/toggle-active`)
+  return toCoupon(response.data.data)
 }

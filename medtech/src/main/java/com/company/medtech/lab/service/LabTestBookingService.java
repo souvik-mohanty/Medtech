@@ -6,6 +6,7 @@ import com.company.medtech.billing.service.InvoicePdfService;
 import com.company.medtech.common.enums.PaymentStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.common.exceptions.ResourceNotFoundException;
+import com.company.medtech.coupon.service.CouponService;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import com.company.medtech.franchise.service.FranchiseService;
@@ -88,6 +89,7 @@ public class LabTestBookingService {
     private final PatientProfileRepository patientProfileRepository;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final InvoicePdfService invoicePdfService;
+    private final CouponService couponService;
 
     public LabTestBookingService(
             LabTestBookingRepository bookingRepository,
@@ -106,7 +108,8 @@ public class LabTestBookingService {
             NotificationService notificationService,
             PatientProfileRepository patientProfileRepository,
             PaymentHistoryRepository paymentHistoryRepository,
-            InvoicePdfService invoicePdfService
+            InvoicePdfService invoicePdfService,
+            CouponService couponService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
@@ -116,6 +119,7 @@ public class LabTestBookingService {
         this.franchiseService = franchiseService;
         this.userAuthRepository = userAuthRepository;
         this.patientProfileService = patientProfileService;
+        this.couponService = couponService;
         this.patientAddressRepository = patientAddressRepository;
         this.familyMemberRepository = familyMemberRepository;
         this.paymentRepository = paymentRepository;
@@ -196,9 +200,10 @@ public class LabTestBookingService {
 
         BigDecimal subtotal = items.stream().map(LabTestBookingItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal collectionCharge = resolveCollectionCharge(franchise, request.getCollectionMethod(), subtotal);
-        // Coupon validation/discount isn't built yet (see the Coupon module,
-        // a later stage) — the code is stored as-is but doesn't discount anything.
-        BigDecimal discount = BigDecimal.ZERO;
+        String couponCode = request.getCouponCode();
+        BigDecimal discount = (couponCode != null && !couponCode.isBlank())
+                ? couponService.redeem(franchise.getId(), couponCode, subtotal.add(collectionCharge))
+                : BigDecimal.ZERO;
         BigDecimal taxable = subtotal.subtract(discount).max(BigDecimal.ZERO).add(collectionCharge);
         BigDecimal gst = taxable.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalAmount = taxable.add(gst);
@@ -229,7 +234,7 @@ public class LabTestBookingService {
         booking.setCollectionCharge(collectionCharge);
         booking.setGst(gst);
         booking.setTotalAmount(totalAmount);
-        booking.setCouponCode(request.getCouponCode());
+        booking.setCouponCode(couponCode != null && !couponCode.isBlank() ? couponCode.trim().toUpperCase() : null);
         boolean isCash = request.getPaymentMethod() == PaymentMethod.CASH;
         booking.setPaymentStatus(isCash ? PaymentStatus.PENDING : PaymentStatus.SUCCESS);
         booking.setAmountPaid(isCash ? BigDecimal.ZERO : totalAmount);

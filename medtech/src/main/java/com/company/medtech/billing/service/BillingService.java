@@ -10,6 +10,7 @@ import com.company.medtech.billing.model.DiscountType;
 import com.company.medtech.billing.model.PaymentMode;
 import com.company.medtech.billing.repository.BillRepository;
 import com.company.medtech.common.enums.OrderStatus;
+import com.company.medtech.coupon.service.CouponService;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.common.exceptions.ResourceNotFoundException;
 import com.company.medtech.franchise.model.Franchise;
@@ -55,6 +56,7 @@ public class BillingService {
     private final UserAuthRepository userAuthRepository;
     private final PatientProfileService patientProfileService;
     private final PatientAddressRepository patientAddressRepository;
+    private final CouponService couponService;
 
     public BillingService(
             BillRepository billRepository,
@@ -67,7 +69,8 @@ public class BillingService {
             PaymentHistoryRepository paymentHistoryRepository,
             UserAuthRepository userAuthRepository,
             PatientProfileService patientProfileService,
-            PatientAddressRepository patientAddressRepository
+            PatientAddressRepository patientAddressRepository,
+            CouponService couponService
     ) {
         this.billRepository = billRepository;
         this.productRepository = productRepository;
@@ -80,6 +83,7 @@ public class BillingService {
         this.userAuthRepository = userAuthRepository;
         this.patientProfileService = patientProfileService;
         this.patientAddressRepository = patientAddressRepository;
+        this.couponService = couponService;
     }
 
     private void recordPaymentHistory(UUID billId, BigDecimal amount) {
@@ -114,8 +118,16 @@ public class BillingService {
 
         reserveStockAndAddItems(bill, franchise.getId(), request.getItems(), SalesChannel.WALKIN);
         applyTotals(bill);
-        applyDiscount(bill, request.getDiscountType(), request.getDiscountValue());
-        bill.setCouponCode(request.getDiscountValue() != null ? request.getCouponCode() : null);
+
+        String couponCode = request.getCouponCode();
+        if (couponCode != null && !couponCode.isBlank()) {
+            BigDecimal preDiscountTotal = bill.getSubtotal().add(bill.getGstAmount());
+            BigDecimal discountAmount = couponService.redeem(franchise.getId(), couponCode, preDiscountTotal);
+            applyResolvedDiscount(bill, discountAmount);
+            bill.setCouponCode(couponCode.trim().toUpperCase());
+        } else {
+            applyDiscount(bill, request.getDiscountType(), request.getDiscountValue());
+        }
         bill.setNote(request.getNote());
 
         // Lets the owner backdate a walk-in sale entered after the fact (e.g. catching up paper records at day's end).
@@ -398,6 +410,13 @@ public class BillingService {
             }
         }
 
+        bill.setDiscountAmount(discountAmount);
+        bill.setTotalAmount(preDiscountTotal.subtract(discountAmount));
+    }
+
+    /** Same bookkeeping as applyDiscount, but for a discount amount already resolved server-side (e.g. by CouponService#redeem) rather than a client-sent type/value. */
+    private void applyResolvedDiscount(Bill bill, BigDecimal discountAmount) {
+        BigDecimal preDiscountTotal = bill.getSubtotal().add(bill.getGstAmount());
         bill.setDiscountAmount(discountAmount);
         bill.setTotalAmount(preDiscountTotal.subtract(discountAmount));
     }

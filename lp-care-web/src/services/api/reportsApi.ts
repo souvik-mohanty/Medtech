@@ -1,25 +1,25 @@
-import { mockDelay } from "@/lib/utils"
-import { mockReports } from "@/services/mock/reports"
+import { getMyBookings } from "@/services/api/bookingsApi"
 import type { LabReport } from "@/types"
 
-let reports: LabReport[] = structuredClone(mockReports)
-
+/**
+ * Derived from the patient's own real bookings (getMyBookings) — a booking
+ * with hasReport true means the owner has uploaded a real report PDF (see
+ * labReportApi#uploadLabReport/viewPatientReport, which serve the actual
+ * file). This only powers the dashboard's "Recent reports" summary widget;
+ * reportGeneratedDate isn't tracked on the booking itself, so it's left
+ * unset rather than invented.
+ */
 export async function getReports(patientName?: string): Promise<LabReport[]> {
-  await mockDelay()
-  if (!patientName) return reports
-  return reports.filter((r) => r.patientName === patientName)
-}
-
-export async function getReportById(id: string): Promise<LabReport | undefined> {
-  await mockDelay(300)
-  return reports.find((r) => r.id === id)
-}
-
-/** Owner action — moves a report from PROCESSING/PENDING to READY. */
-export async function markReportReady(id: string): Promise<LabReport> {
-  await mockDelay(500)
-  reports = reports.map((r) => (r.id === id ? { ...r, status: "READY", reportGeneratedDate: new Date().toISOString().slice(0, 10) } : r))
-  const updated = reports.find((r) => r.id === id)
-  if (!updated) throw new Error("Report not found")
-  return updated
+  const bookings = await getMyBookings()
+  return bookings
+    .filter((b) => b.hasReport && (!patientName || b.patientName === patientName))
+    .map((b) => ({
+      id: b.id,
+      bookingId: b.id,
+      patientName: b.patientName,
+      testNames: b.packageName ? [b.packageName] : b.items.map((i) => i.testName),
+      sampleCollectionDate: b.collectionDate,
+      status: "READY" as const,
+      laboratoryName: "",
+    }))
 }

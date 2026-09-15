@@ -12,6 +12,8 @@ import com.company.medtech.common.constants.AppConstants;
 import com.company.medtech.common.enums.OrderStatus;
 import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.common.exceptions.ResourceNotFoundException;
+import com.company.medtech.coupon.dto.CouponRequest;
+import com.company.medtech.coupon.service.CouponService;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.model.PaymentGatewayConfig;
 import com.company.medtech.franchise.model.PaymentProvider;
@@ -31,6 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,6 +67,9 @@ class BillingServiceTest {
 
     @Autowired
     private PatientAddressRepository patientAddressRepository;
+
+    @Autowired
+    private CouponService couponService;
 
     private Franchise franchise;
     private Product paracetamol;
@@ -180,6 +186,37 @@ class BillingServiceTest {
         assertThatThrownBy(() -> billingService.createOnlineOrder(patientEmail, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("not available for online orders");
+    }
+
+    @Test
+    void counterBillAppliesARealCouponAndIncrementsItsUsage() {
+        CouponRequest couponRequest = new CouponRequest();
+        couponRequest.setCode("SAVE10");
+        couponRequest.setType(DiscountType.FLAT);
+        couponRequest.setValue(new BigDecimal("10.00"));
+        couponRequest.setExpiresAt(LocalDateTime.now().plusDays(30));
+        couponService.create(franchise.getOwnerEmail(), couponRequest);
+
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 2))); // 56.00 pre-discount
+        request.setCouponCode("save10");
+
+        BillResponse response = billingService.createCounterBill(franchise.getOwnerEmail(), request);
+
+        assertThat(response.getDiscountAmount()).isEqualByComparingTo(new BigDecimal("10.00"));
+        assertThat(response.getTotalAmount()).isEqualByComparingTo(new BigDecimal("46.00"));
+        assertThat(response.getCouponCode()).isEqualTo("SAVE10");
+    }
+
+    @Test
+    void counterBillRejectsAnUnknownCouponCode() {
+        CreateCounterBillRequest request = new CreateCounterBillRequest();
+        request.setItems(List.of(itemRequest(paracetamol.getId(), 1)));
+        request.setCouponCode("NOSUCHCODE");
+
+        assertThatThrownBy(() -> billingService.createCounterBill(franchise.getOwnerEmail(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("doesn't exist");
     }
 
     @Test

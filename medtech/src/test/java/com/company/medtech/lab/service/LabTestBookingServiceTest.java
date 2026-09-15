@@ -5,6 +5,9 @@ import com.company.medtech.auth.repository.UserAuthRepository;
 import com.company.medtech.common.constants.AppConstants;
 import com.company.medtech.common.enums.PaymentStatus;
 import com.company.medtech.common.exceptions.BusinessException;
+import com.company.medtech.coupon.dto.CouponRequest;
+import com.company.medtech.coupon.service.CouponService;
+import com.company.medtech.billing.model.DiscountType;
 import com.company.medtech.franchise.model.Franchise;
 import com.company.medtech.franchise.model.PaymentGatewayConfig;
 import com.company.medtech.franchise.model.PaymentProvider;
@@ -28,6 +31,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,6 +61,9 @@ class LabTestBookingServiceTest {
     @Autowired
     private PatientAddressRepository patientAddressRepository;
 
+    @Autowired
+    private CouponService couponService;
+
     private Franchise franchise;
     private LabTestResponse test;
     private PatientProfile patientProfile;
@@ -78,6 +86,36 @@ class LabTestBookingServiceTest {
         profile.setUserId(patientUser.getId());
         profile.setPhone("9876543210");
         patientProfile = patientProfileRepository.save(profile);
+    }
+
+    @Test
+    void bookingAppliesARealCouponToTheTotal() {
+        CouponRequest couponRequest = new CouponRequest();
+        couponRequest.setCode("LAB50");
+        couponRequest.setType(DiscountType.FLAT);
+        couponRequest.setValue(new BigDecimal("50.00"));
+        couponRequest.setExpiresAt(LocalDateTime.now().plusDays(30));
+        couponService.create(franchise.getOwnerEmail(), couponRequest);
+
+        LabTestBookingRequest request = bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH);
+        request.setCouponCode("lab50");
+
+        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, request);
+
+        assertThat(response.getDiscount()).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(response.getCouponCode()).isEqualTo("LAB50");
+        // subtotal 300 - discount 50 = 250 taxable, +5% GST = 262.50
+        assertThat(response.getTotalAmount()).isEqualByComparingTo(new BigDecimal("262.50"));
+    }
+
+    @Test
+    void bookingRejectsAnUnknownCouponCode() {
+        LabTestBookingRequest request = bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH);
+        request.setCouponCode("NOPE");
+
+        assertThatThrownBy(() -> labTestBookingService.bookTest(patientEmail, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("doesn't exist");
     }
 
     @Test
