@@ -1,0 +1,32 @@
+name: Keep backend awake
+
+# Render's free tier spins the backend down after 15 minutes of no
+# incoming requests, and the next request pays a slow cold-start (the
+# whole JVM + Spring context has to boot again — the kind of delay you
+# just watched happen: 100+ seconds instead of milliseconds). Pinging the
+# health endpoint often enough that Render never sees a 15-minute gap
+# keeps it warm, so a real patient/owner never eats that cold start.
+#
+# GitHub's own scheduler doesn't guarantee the exact minute a cron job
+# fires (it can slip a few minutes under load) and disables scheduled
+# workflows automatically after 60 days with no commits to the repo —
+# neither is a real problem for an actively-developed repo pinging every
+# 10 minutes against a 15-minute sleep window, but worth knowing if pings
+# ever seem to stop. An external uptime monitor (UptimeRobot, cron-job.org,
+# etc.) would sidestep both, at the cost of a third-party account.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /actuator/health
+        # --max-time is generous on purpose: if the backend IS asleep, this
+        # specific ping eats the cold-start delay so the next real visitor
+        # doesn't have to. -f fails the step (and this workflow run) on a
+        # non-2xx response, so a genuine outage still shows up as a failed
+        # GitHub Actions run instead of silently doing nothing.
+        run: curl -f --max-time 100 https://lpcare.onrender.com/actuator/health

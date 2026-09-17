@@ -200,8 +200,15 @@ build).
   `DB_PASSWORD`, `DB_SCHEMA` — see `application-render.yml`. If the target
   Postgres instance is shared with another project, `DB_SCHEMA` keeps this
   app's tables confined to their own schema instead of the shared `public`
-  one.
+  one. Render's free tier sleeps the service after 15 minutes idle — see
+  the `.github/workflows/keep-alive.yml` note right below.
 - **Database** → any Postgres instance (currently Neon).
+- **Keeping the backend warm** → `.github/workflows/keep-alive.yml` pings
+  `/actuator/health` every 10 minutes so Render's free tier never sees a
+  15-minute gap and spins the service down (a cold start after sleeping
+  takes 100+ seconds — this avoids sticking a real visitor with that).
+  Runs on GitHub's own scheduler, no external account needed; also
+  runnable on demand from the Actions tab (`workflow_dispatch`).
 - **Monitoring** → Render has no built-in Prometheus server to scrape, so
   the backend instead *pushes* metrics on a 30s interval straight to a
   hosted Grafana Cloud instance's OTLP endpoint (`management.otlp` in
