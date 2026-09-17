@@ -13,3 +13,14 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
+  kafka:
+    # No real broker in most test classes — the bootstrap-servers value falls
+    # back to application.yml's default (localhost:9092), which is fine as
+    # long as nothing actually tries to connect. Disabling the listener
+    # container's auto-start means the BookingEventListener bean exists (so
+    # the context still wires up cleanly) but never attempts that connection
+    # during a normal test's context refresh. LabTestBookingServiceTest is
+    # the one exception that actually exercises the Kafka round-trip — it
+    # overrides both of these back on via @EmbeddedKafka + @TestPropertySource.
+    listener:
+      auto-startup: false

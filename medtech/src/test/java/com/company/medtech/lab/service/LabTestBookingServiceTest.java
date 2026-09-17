@@ -20,6 +20,8 @@ import com.company.medtech.lab.model.BookingStatus;
 import com.company.medtech.lab.model.CollectionMethod;
 import com.company.medtech.lab.model.CollectionStatus;
 import com.company.medtech.lab.model.TestCategory;
+import com.company.medtech.notification.model.Notification;
+import com.company.medtech.notification.repository.NotificationRepository;
 import com.company.medtech.patient.model.PatientAddress;
 import com.company.medtech.patient.model.PatientProfile;
 import com.company.medtech.patient.repository.PatientAddressRepository;
@@ -29,9 +31,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +46,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
+// Only this test class needs a real Kafka round-trip (see
+// bookingPublishesAKafkaEventThatCreatesBothNotifications below) — every
+// other @SpringBootTest class leaves the listener container off (see
+// application-test.yml) since it has no embedded broker to connect to.
+@EmbeddedKafka(partitions = 1, topics = "booking-events", bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+@TestPropertySource(properties = "spring.kafka.listener.auto-startup=true")
 class LabTestBookingServiceTest {
 
     @Autowired
@@ -63,6 +74,9 @@ class LabTestBookingServiceTest {
 
     @Autowired
     private CouponService couponService;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private Franchise franchise;
     private LabTestResponse test;
@@ -128,6 +142,38 @@ class LabTestBookingServiceTest {
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).getTestName()).isEqualTo("CBC");
         assertThat(response.getTotalAmount()).isNotNull();
+    }
+
+    /**
+     * Proves the Kafka round-trip actually works end to end, not just that the producer call
+     * doesn't throw: bookTest() only publishes an event (see BookingEventProducer); a separate
+     * consumer thread (BookingEventListener, backed by the @EmbeddedKafka broker this test class
+     * starts) is what actually writes the notification rows, asynchronously and out of process
+     * from this test method — hence the poll-with-timeout instead of asserting immediately.
+     */
+    @Test
+    void bookingPublishesAKafkaEventThatCreatesBothNotifications() throws InterruptedException {
+        labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.CASH));
+
+        List<Notification> patientNotifications = awaitNotifications(() -> notificationRepository.findByPatientEmailOrderByCreatedAtDesc(patientEmail));
+        assertThat(patientNotifications).isNotEmpty();
+        assertThat(patientNotifications.get(0).getMessage()).contains("CBC");
+
+        List<Notification> franchiseNotifications = awaitNotifications(() -> notificationRepository.findByFranchiseIdOrderByCreatedAtDesc(franchise.getId()));
+        assertThat(franchiseNotifications).isNotEmpty();
+    }
+
+    private List<Notification> awaitNotifications(java.util.function.Supplier<List<Notification>> query) throws InterruptedException {
+        Duration timeout = Duration.ofSeconds(10);
+        long deadline = System.currentTimeMillis() + timeout.toMillis();
+        while (System.currentTimeMillis() < deadline) {
+            List<Notification> found = query.get();
+            if (!found.isEmpty()) {
+                return found;
+            }
+            Thread.sleep(100);
+        }
+        return query.get();
     }
 
     @Test

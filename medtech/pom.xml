@@ -124,6 +124,23 @@
 			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 
+		<!-- Lets production push metrics straight to a hosted Grafana Cloud
+		     instance (Render has no built-in Prometheus to scrape it) — see
+		     the "Grafana Cloud" section in management.otlp below. Disabled
+		     unless GRAFANA_CLOUD_OTLP_ENDPOINT is actually set, so local dev
+		     and tests are unaffected by just having this dependency present. -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-otlp</artifactId>
+		</dependency>
+
+		<!-- Messaging: async event publishing (currently just the lab booking ->
+		     notification flow, see lab.event package) -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
+
 		<!-- Utilities -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -145,6 +162,15 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Test-only in-process Kafka broker (@EmbeddedKafka) — same idea as H2
+		     above: exercise the real producer/consumer wiring without a real
+		     Kafka cluster available. -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 

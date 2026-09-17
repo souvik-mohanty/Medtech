@@ -1,0 +1,75 @@
+# Local dev infrastructure: Kafka (the broker LabTestBookingService
+# publishes booking events to) and a Prometheus + Grafana pair that scrapes
+# the backend's /actuator/prometheus endpoint so you can watch real metrics
+# on a dashboard while developing.
+#
+# Postgres is deliberately NOT here — it's already covered by its own
+# standalone container (see README.md's Getting Started: `docker run
+# --name medtech-postgres ... -p 5434:5432 postgres:16`, also wired up as a
+# VS Code task). Redeclaring it in this compose file would either conflict
+# with that existing container's name or spin up a second, empty database.
+#
+# None of this runs in production — see README.md's Deployment section for
+# how the real backend gets its Postgres (Neon) and metrics destination
+# (Grafana Cloud, pushed via OTLP) instead.
+#
+# Usage: `docker compose up -d`, then `cd medtech && mvn spring-boot:run`
+# (the backend runs on the host, not in a container, so it can hot-reload).
+
+services:
+
+  # Single-node broker in KRaft mode — no separate Zookeeper container needed.
+  # Host port 29092, not Kafka's usual 9092 — this machine already has
+  # another project's Kafka bound to 9092 (see the Postgres comment above,
+  # same idea), and both 9093 and 9095 turned out to be in Windows's own
+  # reserved/excluded TCP port range (`netsh interface ipv4 show
+  # excludedportrange protocol=tcp`) — Docker Desktop can't bind those no
+  # matter what's using them, hence landing on the 29092/29093 pair instead.
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: medtech-kafka
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093
+      # Advertise localhost:29092 (not the container name) since the backend
+      # connects from the host machine, not from inside this compose network.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:29093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: MedtechLocalDevCluster1
+
+  # Scrapes the backend's /actuator/prometheus every 15s — see
+  # observability/prometheus/prometheus.yml. host.docker.internal resolves
+  # to the host machine, where `mvn spring-boot:run` is listening on 8080.
+  # Host port 9091, not Prometheus's usual 9090 — same reason as Kafka above.
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: medtech-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Pre-provisioned with a Prometheus datasource and a starter "MedTech
+  # Backend" dashboard — see observability/grafana/. Sign in with admin/admin.
+  grafana:
+    image: grafana/grafana:latest
+    container_name: medtech-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus

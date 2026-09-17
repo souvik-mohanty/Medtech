@@ -14,6 +14,7 @@ import com.company.medtech.lab.dto.LabTestBookingItemResponse;
 import com.company.medtech.lab.dto.LabTestBookingRequest;
 import com.company.medtech.lab.dto.LabTestBookingResponse;
 import com.company.medtech.lab.dto.WalkInBookingRequest;
+import com.company.medtech.lab.event.BookingCreatedEvent;
 import com.company.medtech.lab.model.BookingSource;
 import com.company.medtech.lab.model.BookingStatus;
 import com.company.medtech.lab.model.CollectionMethod;
@@ -88,6 +89,7 @@ public class LabTestBookingService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final InvoicePdfService invoicePdfService;
     private final CouponService couponService;
+    private final BookingEventProducer bookingEventProducer;
 
     public LabTestBookingService(
             LabTestBookingRepository bookingRepository,
@@ -107,7 +109,8 @@ public class LabTestBookingService {
             PatientProfileRepository patientProfileRepository,
             PaymentHistoryRepository paymentHistoryRepository,
             InvoicePdfService invoicePdfService,
-            CouponService couponService
+            CouponService couponService,
+            BookingEventProducer bookingEventProducer
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
@@ -127,6 +130,7 @@ public class LabTestBookingService {
         this.patientProfileRepository = patientProfileRepository;
         this.paymentHistoryRepository = paymentHistoryRepository;
         this.invoicePdfService = invoicePdfService;
+        this.bookingEventProducer = bookingEventProducer;
     }
 
     /**
@@ -261,10 +265,11 @@ public class LabTestBookingService {
         }
 
         String itemsSummary = packageName != null ? packageName : items.stream().map(LabTestBookingItem::getItemName).reduce((a, b) -> a + ", " + b).orElse("test");
-        notificationService.notifyPatient(patientEmail, NotificationType.BOOKING_CONFIRMATION,
-                "Booking confirmed", "Your booking for " + itemsSummary + " has been confirmed.");
-        notificationService.notifyFranchise(franchise.getId(), NotificationType.BOOKING_CONFIRMATION,
-                "New booking", displayName(patient) + " booked " + itemsSummary + ".");
+        // Async — see BookingEventProducer/BookingEventListener. Unlike every other notification
+        // trigger in this app (direct, synchronous calls into NotificationService), this one path
+        // goes through Kafka, decoupling notification delivery from the booking response.
+        bookingEventProducer.publishBookingCreated(new BookingCreatedEvent(
+                booking.getId().toString(), franchise.getId().toString(), patientEmail, displayName(patient), itemsSummary));
 
         return toResponse(booking, items, patient.getId().toString(), displayName(patient), profile.getPhone());
     }

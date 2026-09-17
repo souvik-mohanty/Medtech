@@ -14,10 +14,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Real side-effect hooks live in the services that cause them (booking
- * creation, payment confirmation, report upload, etc.) — they call
- * #notifyFranchise / #notifyPatient directly rather than this module
- * listening for events, keeping the trigger points easy to find.
+ * Almost every side-effect hook lives in the service that causes it
+ * (payment confirmation, report upload, walk-in booking, etc.) — those
+ * call #notifyFranchise / #notifyPatient directly, keeping the trigger
+ * point easy to find. The one exception: a patient's own online lab
+ * booking (LabTestBookingService#bookTest) publishes a Kafka event instead
+ * of calling this service directly — see notification.listener.
+ * BookingEventListener, which is the only caller of these two methods that
+ * isn't itself the thing that caused the notification.
  */
 @Service
 public class NotificationService {

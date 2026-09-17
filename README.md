@@ -64,8 +64,8 @@ pending-dues views, notifications, and invoice branding/settings.
 | `referral/` | Referral sources (e.g. doctors) and their commission on bookings they send in. |
 | `patient/` | Patient profile, family members, saved addresses, and the owner-facing patient directory. |
 | `payment/` | Payment/payment-history records backing bookings and orders. |
-| `notification/` | In-app notifications for both roles. |
-| `common/`, `config/` | Shared constants/enums/exceptions, Spring Security + JWT + CORS configuration. |
+| `notification/` | In-app notifications for both roles. Almost all of them are created by a direct, synchronous call from whatever service caused them — the one exception is a patient's own online lab booking, published as a Kafka event and consumed by `notification.listener.BookingEventListener` (see Async events below). |
+| `common/`, `config/` | Shared constants/enums/exceptions, Spring Security + JWT + CORS configuration, Kafka topic declarations. |
 
 Every domain follows the same shape: `model/` (JPA entities), `repository/`
 (Spring Data interfaces), `service/` (business logic — money math always
@@ -115,6 +115,24 @@ To point at a hosted database instead (e.g. when Docker isn't available),
 create a gitignored `application-local.yml` next to `application.yml` and
 run with `-Dspring-boot.run.profiles=local`.
 
+### Local infrastructure: Kafka + Prometheus + Grafana
+
+```bash
+docker compose up -d
+```
+
+Brings up Kafka (`localhost:29092` — not Kafka's usual 9092/9093, since
+those can collide with another project's broker or Windows's own reserved
+port ranges; see the comments in `docker-compose.yml`), Prometheus
+(`localhost:9091`, scraping the backend's `/actuator/prometheus`), and
+Grafana (`localhost:3000`, login `admin`/`admin`) with a "MedTech Backend"
+dashboard already provisioned (JVM heap, HTTP request rate, DB connection
+pool, CPU). Postgres is intentionally not part of this compose file — see
+the note in `docker-compose.yml` for why.
+
+The backend still starts and runs fine with none of this up — Kafka and
+the metrics push are both best-effort (see Async events below).
+
 ### Frontend (`lp-care-web/`)
 
 Requires Node.js.
@@ -160,6 +178,15 @@ build).
   see `PatientDirectoryService` for how records get grouped into one
   person even when different visits supplied different identifying
   details.
+- **Almost everything notifies synchronously, on purpose** — see
+  `NotificationService`'s class doc. The one deliberate exception is a
+  patient's own online lab booking, which publishes a `BookingCreatedEvent`
+  to Kafka (topic `booking-events`, see `config.KafkaTopicConfig` and
+  `lab.service.BookingEventProducer`) instead of notifying directly; a
+  consumer (`notification.listener.BookingEventListener`) reacts to it
+  asynchronously. `KafkaTemplate#send` is fire-and-forget here — a slow or
+  down broker delays the notification, never the patient's booking
+  response.
 
 ## Deployment
 
@@ -175,6 +202,22 @@ build).
   app's tables confined to their own schema instead of the shared `public`
   one.
 - **Database** → any Postgres instance (currently Neon).
+- **Monitoring** → Render has no built-in Prometheus server to scrape, so
+  the backend instead *pushes* metrics on a 30s interval straight to a
+  hosted Grafana Cloud instance's OTLP endpoint (`management.otlp` in
+  `application.yml`). Off by default — turn it on by setting
+  `GRAFANA_CLOUD_OTLP_ENABLED=true`, `GRAFANA_CLOUD_OTLP_ENDPOINT`, and
+  `GRAFANA_CLOUD_OTLP_TOKEN` as Render env vars (Grafana Cloud free tier:
+  **Connections → Add new connection → OpenTelemetry (OTLP)** gives you
+  both the endpoint URL and a ready-made Basic auth token). Local dev and
+  the test suite never touch this — see the docker-compose Prometheus/
+  Grafana setup above instead.
+- **Kafka** → nothing hosted yet. `KAFKA_BOOTSTRAP_SERVERS` would need to
+  point at an external hosted broker (e.g. Upstash Kafka, Confluent Cloud)
+  before the live backend's booking-event flow does anything — until then,
+  `KafkaTemplate#send` in production just fails silently in the background
+  on every online booking (harmless, per the fire-and-forget note above,
+  but the notification never gets recreated by any consumer).
 
 ## More documentation
 

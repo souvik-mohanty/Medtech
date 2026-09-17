@@ -12,7 +12,7 @@ spring:
   # Defaults to local Docker Postgres (port 5434, not the default 5432 —
   # this machine already has other projects' Postgres containers bound to
   # 5432 and 5433). Override via env vars (DB_URL/DB_USERNAME/DB_PASSWORD)
-  # or the gitignored application-local.yml (see that file / CLAUDE.md) to
+  # or the gitignored application-local.yml (see that file / README.md) to
   # point at a hosted database (e.g. Neon) instead — never put real
   # non-local credentials directly in this file, it's committed to git.
   datasource:
@@ -56,6 +56,32 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 15MB
+
+  # -------------------- Kafka --------------------
+  # Defaults to a local broker (see docker-compose.yml at the repo root:
+  # `docker compose up kafka`). Only one event flows through it today — a
+  # patient's own online lab booking (LabTestBookingService#bookTest ->
+  # BookingEventProducer) — see config.KafkaTopicConfig for the topic and
+  # notification.listener.BookingEventListener for the consumer. Everything
+  # else in the app still notifies synchronously; see NotificationService's
+  # class doc for why.
+  kafka:
+    # Port 29092, not Kafka's usual 9092 — see docker-compose.yml's kafka
+    # service comment for why.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: medtech-notifications
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.value.default.type: com.company.medtech.lab.event.BookingCreatedEvent
+        spring.json.trusted.packages: com.company.medtech.lab.event
 
 # -------------------- JWT --------------------
 jwt:
@@ -101,6 +127,23 @@ management:
   endpoint:
     health:
       show-details: always
+  # -------------------- Grafana Cloud (production monitoring) --------------------
+  # Render has no built-in Prometheus server to scrape /actuator/prometheus, so
+  # instead of scraping, the app itself PUSHES metrics on an interval straight
+  # to a hosted Grafana Cloud instance's OTLP endpoint. Off by default (no url
+  # configured) so local dev and tests never try to reach the internet — set
+  # GRAFANA_CLOUD_OTLP_ENDPOINT/GRAFANA_CLOUD_OTLP_TOKEN as Render env vars to
+  # turn it on (Grafana Cloud's free tier: Connections -> Add new connection ->
+  # OpenTelemetry (OTLP) gives you both). Local /actuator/prometheus scraping
+  # (docker-compose's prometheus service) is unaffected either way.
+  otlp:
+    metrics:
+      export:
+        enabled: ${GRAFANA_CLOUD_OTLP_ENABLED:false}
+        url: ${GRAFANA_CLOUD_OTLP_ENDPOINT:http://localhost:4318/v1/metrics}
+        headers:
+          Authorization: ${GRAFANA_CLOUD_OTLP_TOKEN:}
+        step: 30s
 
 # -------------------- Logging --------------------
 logging:

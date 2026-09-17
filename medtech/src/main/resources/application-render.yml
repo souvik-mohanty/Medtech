@@ -18,3 +18,13 @@ spring:
     properties:
       hibernate:
         default_schema: ${DB_SCHEMA}
+  kafka:
+    listener:
+      # No hosted Kafka broker configured yet — leaving auto-startup on
+      # (the base application.yml's default) would mean the consumer
+      # container spends production's whole lifetime endlessly retrying a
+      # connection to KAFKA_BOOTSTRAP_SERVERS' fallback (localhost:29092,
+      # nothing there on Render), spamming connection-refused into the
+      # logs. Set KAFKA_ENABLED=true once a real broker is provisioned and
+      # KAFKA_BOOTSTRAP_SERVERS points at it.
+      auto-startup: ${KAFKA_ENABLED:false}
