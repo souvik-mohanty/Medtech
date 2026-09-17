@@ -13,7 +13,6 @@ import { DashboardSectionCard } from "@/components/layouts/DashboardShell"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
 import { getPaymentGatewayConfig, removePaymentGatewayConfig, savePaymentGatewayConfig } from "@/services/api/paymentGatewayApi"
 import { getFranchiseProfile, updateFranchiseProfile } from "@/services/api/franchiseApi"
-import { formatDateTime } from "@/lib/utils"
 import type { PaymentGatewayProvider } from "@/types"
 
 const PROVIDER_LABEL: Record<PaymentGatewayProvider, string> = { RAZORPAY: "Razorpay", PHONEPE: "PhonePe" }
@@ -206,9 +205,8 @@ export function OwnerSettingsPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    API key <span className="font-mono">{gateway.apiKey}</span> · Secret <span className="font-mono">{gateway.maskedSecret}</span>
+                    API key <span className="font-mono">{gateway.maskedApiKey}</span>
                   </p>
-                  <p className="text-xs text-muted-foreground">Connected {formatDateTime(gateway.updatedAt)}</p>
                 </div>
               </div>
               <Button size="sm" variant="outline" onClick={() => setRemoveOpen(true)}>
@@ -244,7 +242,7 @@ export function OwnerSettingsPage() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Demo only — no real credentials are sent or stored anywhere. The secret is never shown again once saved, only a masked version.
+                Your secret is encrypted before storage and never shown again once saved — only a masked API key.
               </p>
               <Button type="submit" disabled={saveGatewayMutation.isPending || !apiKey || !apiSecret}>
                 {saveGatewayMutation.isPending && <Loader2 className="size-4 animate-spin" />}

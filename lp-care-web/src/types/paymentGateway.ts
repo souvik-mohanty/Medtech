@@ -2,9 +2,7 @@ export type PaymentGatewayProvider = "RAZORPAY" | "PHONEPE"
 
 export interface PaymentGatewayConfig {
   provider: PaymentGatewayProvider
-  apiKey: string
-  /** The real secret is never returned once saved — only a masked form, same as the medtech backend's CredentialEncryptionService. */
-  maskedSecret: string
+  /** Masked, e.g. "****ab12" — the real key secret is never returned by the backend at all, see CredentialEncryptionService. */
+  maskedApiKey: string
   active: boolean
-  updatedAt: string
 }
