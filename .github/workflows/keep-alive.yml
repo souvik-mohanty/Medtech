@@ -29,4 +29,11 @@ jobs:
         # doesn't have to. -f fails the step (and this workflow run) on a
         # non-2xx response, so a genuine outage still shows up as a failed
         # GitHub Actions run instead of silently doing nothing.
-        run: curl -f --max-time 100 https://lpcare.onrender.com/actuator/health
+        #
+        # 100s wasn't enough — the very first run hit a genuinely cold
+        # instance and curl's own timeout killed it at exactly the 100s
+        # mark before Render ever responded (JVM + Spring context + Flyway
+        # boot can run past that). 280s gives real headroom; once this
+        # workflow has run a few times every subsequent ping should hit an
+        # already-warm instance and return in milliseconds anyway.
+        run: curl -f --max-time 280 https://lpcare.onrender.com/actuator/health
