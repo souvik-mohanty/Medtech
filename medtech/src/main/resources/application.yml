@@ -74,6 +74,18 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+        # KafkaTemplate#send LOOKS fire-and-forget, but the *first* send to a
+        # topic the producer has no cached metadata for blocks the calling
+        # thread synchronously while it tries to fetch that metadata, and
+        # THROWS synchronously if the broker never answers within this
+        # window — not just failing the returned future. Default is 60000ms;
+        # with no broker deployed in production, every online booking was
+        # hanging for a full minute before failing. A real, reachable broker
+        # answers in well under a second, so 1s still confirms one's there
+        # while keeping the added latency on every booking small for as long
+        # as production doesn't have one — see BookingEventProducer's
+        # try/catch for what happens after that.
+        max.block.ms: 1000
     consumer:
       group-id: medtech-notifications
       auto-offset-reset: earliest
@@ -127,6 +139,16 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    # Kafka is optional, best-effort infrastructure here (see the Kafka
+    # section above) — with no broker deployed in production yet, Spring
+    # Boot's auto-registered Kafka health check was permanently reporting
+    # "DOWN", which drags /actuator/health's overall status to DOWN (HTTP
+    # 503) even though the app itself is working fine. That's almost
+    # certainly why the keep-alive GitHub Action's `curl -f` was reporting
+    # "run failed" on every single ping, not just real cold starts.
+    kafka:
+      enabled: false
   # -------------------- Grafana Cloud (production monitoring) --------------------
   # Render has no built-in Prometheus server to scrape /actuator/prometheus, so
   # instead of scraping, the app itself PUSHES metrics on an interval straight
