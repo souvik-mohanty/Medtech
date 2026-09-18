@@ -41,6 +41,7 @@ interface BackendBooking {
   referralName: string | null
   referralCommission: number | null
   paymentHistory: PaymentHistoryEntry[]
+  razorpayOrderId: string | null
 }
 
 function toBooking(b: BackendBooking): Booking {
@@ -82,6 +83,7 @@ function toBooking(b: BackendBooking): Booking {
     referralName: b.referralName ?? undefined,
     referralCommission: b.referralCommission ?? undefined,
     paymentHistory: b.paymentHistory,
+    razorpayOrderId: b.razorpayOrderId ?? undefined,
   }
 }
 
@@ -129,6 +131,18 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     couponCode: input.couponCode,
     paymentMethod: input.paymentMethod,
   })
+  return toBooking(response.data.data)
+}
+
+export interface VerifyPaymentInput {
+  razorpayOrderId: string
+  razorpayPaymentId: string
+  razorpaySignature: string
+}
+
+/** Called from Razorpay Checkout.js's success handler — this is what actually marks the booking paid; nothing about the popup closing "successfully" on its own is trusted. */
+export async function verifyOnlinePayment(bookingId: string, input: VerifyPaymentInput): Promise<Booking> {
+  const response = await apiClient.post<{ data: BackendBooking }>(`/api/patient/labtests/bookings/${bookingId}/verify-payment`, input)
   return toBooking(response.data.data)
 }
 

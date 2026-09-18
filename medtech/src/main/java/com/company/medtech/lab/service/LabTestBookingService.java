@@ -45,6 +45,7 @@ import com.company.medtech.payment.model.PaymentSourceType;
 import com.company.medtech.payment.model.RefundStatus;
 import com.company.medtech.payment.repository.PaymentHistoryRepository;
 import com.company.medtech.payment.repository.PaymentRepository;
+import com.company.medtech.payment.service.RazorpayService;
 import com.company.medtech.referral.model.CommissionType;
 import com.company.medtech.referral.model.Referral;
 import com.company.medtech.referral.repository.ReferralRepository;
@@ -90,6 +91,7 @@ public class LabTestBookingService {
     private final InvoicePdfService invoicePdfService;
     private final CouponService couponService;
     private final BookingEventProducer bookingEventProducer;
+    private final RazorpayService razorpayService;
 
     public LabTestBookingService(
             LabTestBookingRepository bookingRepository,
@@ -110,7 +112,8 @@ public class LabTestBookingService {
             PaymentHistoryRepository paymentHistoryRepository,
             InvoicePdfService invoicePdfService,
             CouponService couponService,
-            BookingEventProducer bookingEventProducer
+            BookingEventProducer bookingEventProducer,
+            RazorpayService razorpayService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
@@ -131,6 +134,7 @@ public class LabTestBookingService {
         this.paymentHistoryRepository = paymentHistoryRepository;
         this.invoicePdfService = invoicePdfService;
         this.bookingEventProducer = bookingEventProducer;
+        this.razorpayService = razorpayService;
     }
 
     /**
@@ -236,9 +240,13 @@ public class LabTestBookingService {
         booking.setGst(gst);
         booking.setTotalAmount(totalAmount);
         booking.setCouponCode(couponCode != null && !couponCode.isBlank() ? couponCode.trim().toUpperCase() : null);
+        // Booking always starts unpaid, regardless of method — CASH waits on the owner confirming
+        // it was collected (#markPaid); ONLINE waits on a real Razorpay payment being verified
+        // (#verifyOnlinePayment) rather than being mock-marked paid the instant a Razorpay Order
+        // merely gets created below (creating an order costs nothing and proves nothing was paid).
         boolean isCash = request.getPaymentMethod() == PaymentMethod.CASH;
-        booking.setPaymentStatus(isCash ? PaymentStatus.PENDING : PaymentStatus.SUCCESS);
-        booking.setAmountPaid(isCash ? BigDecimal.ZERO : totalAmount);
+        booking.setPaymentStatus(PaymentStatus.PENDING);
+        booking.setAmountPaid(BigDecimal.ZERO);
         booking.setCreatedAt(LocalDateTime.now());
         booking = bookingRepository.save(booking);
 
@@ -253,16 +261,19 @@ public class LabTestBookingService {
         payment.setPatientEmail(patientEmail);
         payment.setPatientName(displayName(patient));
         payment.setAmount(totalAmount);
-        payment.setAmountPaid(isCash ? BigDecimal.ZERO : totalAmount);
+        payment.setAmountPaid(BigDecimal.ZERO);
         payment.setMethod(request.getPaymentMethod());
-        payment.setStatus(isCash ? PaymentStatus.PENDING : PaymentStatus.SUCCESS);
+        payment.setStatus(PaymentStatus.PENDING);
         payment.setRefundStatus(RefundStatus.NONE);
         payment.setCreatedAt(booking.getCreatedAt());
-        payment.setPaidAt(isCash ? null : booking.getCreatedAt());
-        paymentRepository.save(payment);
+
+        String razorpayOrderId = null;
         if (!isCash) {
-            recordPaymentHistory(booking.getId(), totalAmount);
+            RazorpayService.RazorpayOrder order = razorpayService.createOrder(franchise, totalAmount, booking.getId().toString());
+            razorpayOrderId = order.orderId();
+            payment.setRazorpayOrderId(razorpayOrderId);
         }
+        paymentRepository.save(payment);
 
         String itemsSummary = packageName != null ? packageName : items.stream().map(LabTestBookingItem::getItemName).reduce((a, b) -> a + ", " + b).orElse("test");
         // Async — see BookingEventProducer/BookingEventListener. Unlike every other notification
@@ -271,7 +282,9 @@ public class LabTestBookingService {
         bookingEventProducer.publishBookingCreated(new BookingCreatedEvent(
                 booking.getId().toString(), franchise.getId().toString(), patientEmail, displayName(patient), itemsSummary));
 
-        return toResponse(booking, items, patient.getId().toString(), displayName(patient), profile.getPhone());
+        LabTestBookingResponse response = toResponse(booking, items, patient.getId().toString(), displayName(patient), profile.getPhone());
+        response.setRazorpayOrderId(razorpayOrderId);
+        return response;
     }
 
     /**
@@ -611,6 +624,52 @@ public class LabTestBookingService {
         return toResponseWithItems(booking);
     }
 
+    /**
+     * The patient's browser calling back after Razorpay's Checkout.js reports success — this is
+     * the ONLY thing that actually marks an online booking paid; nothing about the checkout popup
+     * closing "successfully" on the frontend is trusted on its own; see RazorpayService#verifySignature.
+     * Idempotent: calling it again on an already-verified booking is a no-op, not an error, since a
+     * flaky network can plausibly cause a browser to retry this call after it already succeeded.
+     */
+    @Transactional
+    public LabTestBookingResponse verifyOnlinePayment(String patientEmail, String bookingId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
+        LabTestBooking booking = bookingRepository.findByIdAndPatientEmail(parseId(bookingId, "Booking"), patientEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        if (booking.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return toResponseWithItems(booking);
+        }
+
+        Payment payment = paymentRepository.findByBookingId(booking.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "bookingId", bookingId));
+        if (payment.getRazorpayOrderId() == null || !payment.getRazorpayOrderId().equals(razorpayOrderId)) {
+            throw new BusinessException("This payment doesn't match this booking — please try again.");
+        }
+
+        Franchise franchise = franchiseRepository.findById(booking.getFranchiseId())
+                .orElseThrow(() -> new ResourceNotFoundException("Franchise", "id", booking.getFranchiseId().toString()));
+        if (!razorpayService.verifySignature(franchise, razorpayOrderId, razorpayPaymentId, razorpaySignature)) {
+            throw new BusinessException("Payment verification failed — if money was deducted, contact the lab; otherwise please try again.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        booking.setPaymentStatus(PaymentStatus.SUCCESS);
+        booking.setAmountPaid(booking.getTotalAmount());
+        booking.setPaidAt(now);
+        bookingRepository.save(booking);
+
+        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setAmountPaid(payment.getAmount());
+        payment.setPaidAt(now);
+        payment.setRazorpayPaymentId(razorpayPaymentId);
+        paymentRepository.save(payment);
+        recordPaymentHistory(booking.getId(), payment.getAmount());
+
+        notificationService.notifyPatient(patientEmail, NotificationType.PAYMENT_SUCCESS,
+                "Payment received", "Your payment of ₹" + booking.getTotalAmount() + " has been confirmed.");
+
+        return toResponseWithItems(booking);
+    }
+
     /** Owner viewing/printing the invoice PDF for one of their own bookings — see PatientLabTestBookingController for the patient-facing equivalent. */
     @Transactional(readOnly = true)
     public byte[] renderInvoicePdf(String ownerEmail, String bookingId) {
@@ -827,7 +886,11 @@ public class LabTestBookingService {
                 booking.getReferralId() != null ? booking.getReferralId().toString() : null,
                 booking.getReferralName(),
                 booking.getReferralCommission(),
-                paymentHistory
+                paymentHistory,
+                // Only bookTest()'s own return value fills this in (see its setRazorpayOrderId
+                // call below) — every other caller of this shared builder doesn't need it, and a
+                // Payment lookup here would add an extra query to every list-view row for nothing.
+                null
         );
     }
 }

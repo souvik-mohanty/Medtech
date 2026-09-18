@@ -71,4 +71,6 @@ export interface Booking {
   referralName?: string
   referralCommission?: number
   paymentHistory: PaymentHistoryEntry[]
+  /** Only set for an unpaid online booking — what Razorpay Checkout.js opens against. Undefined once paid, or for CASH. */
+  razorpayOrderId?: string
 }

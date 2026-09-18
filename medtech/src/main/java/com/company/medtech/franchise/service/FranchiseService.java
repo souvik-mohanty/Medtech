@@ -4,6 +4,7 @@ import com.company.medtech.common.exceptions.BusinessException;
 import com.company.medtech.franchise.dto.FranchiseBrandingRequest;
 import com.company.medtech.franchise.dto.FranchiseResponse;
 import com.company.medtech.franchise.model.Franchise;
+import com.company.medtech.franchise.model.PaymentProvider;
 import com.company.medtech.franchise.repository.FranchiseOwnerRepository;
 import com.company.medtech.franchise.repository.FranchiseRepository;
 import org.springframework.stereotype.Service;
@@ -111,7 +112,9 @@ public class FranchiseService {
                 franchise.getCollectionCharge(),
                 franchise.getFreeCollectionMinOrder(),
                 franchise.getServiceablePincodes().stream().sorted().toList(),
-                franchise.hasActivePaymentGateway()
+                franchise.hasActivePaymentGateway(),
+                franchise.hasActivePaymentGateway() && franchise.getPaymentGateway().getProvider() == PaymentProvider.RAZORPAY
+                        ? franchise.getPaymentGateway().getApiKey() : null
         );
     }
 

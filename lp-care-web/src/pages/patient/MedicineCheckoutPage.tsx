@@ -12,8 +12,7 @@ import { DashboardSectionCard } from "@/components/layouts/DashboardShell"
 import { EmptyState } from "@/components/common/EmptyState"
 import { AddAddressDialog } from "@/components/patient/AddAddressDialog"
 import { createOrder } from "@/services/api/ordersApi"
-import { getFranchiseId } from "@/services/api/franchiseApi"
-import { hasActivePaymentGateway } from "@/services/api/franchiseApi"
+import { getFranchiseId, getPaymentGatewayInfo } from "@/services/api/franchiseApi"
 import { getCurrentPatient } from "@/services/api/patientsApi"
 import { useMedicineCartStore } from "@/app/store/medicineCartStore"
 import { errorMessage } from "@/lib/apiClient"
@@ -24,7 +23,8 @@ export function MedicineCheckoutPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { items, setQuantity, removeItem, reset } = useMedicineCartStore()
-  const { data: hasGateway } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: hasActivePaymentGateway })
+  const { data: gatewayInfo } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: getPaymentGatewayInfo })
+  const hasGateway = !!gatewayInfo?.hasActivePaymentGateway
   const { data: patient } = useQuery({ queryKey: ["currentPatient"], queryFn: getCurrentPatient })
 
   const [paymentMode, setPaymentMode] = useState<OrderPaymentMode>("CASH")

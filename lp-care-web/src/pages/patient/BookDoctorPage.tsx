@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/common/EmptyState"
 import { CardGridSkeleton } from "@/components/common/LoadingState"
 import { ErrorState } from "@/components/common/ErrorState"
 import { bookAppointment, getDoctorSchedules } from "@/services/api/appointmentsApi"
-import { hasActivePaymentGateway } from "@/services/api/franchiseApi"
+import { getPaymentGatewayInfo } from "@/services/api/franchiseApi"
 import { errorMessage } from "@/lib/apiClient"
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils"
 import type { DoctorSchedule } from "@/types"
@@ -26,7 +26,8 @@ function formatTime(value: string) {
 export function BookDoctorPage() {
   const navigate = useNavigate()
   const { data: schedules, isLoading, isError, refetch } = useQuery({ queryKey: ["doctor-schedules"], queryFn: getDoctorSchedules })
-  const { data: hasGateway } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: hasActivePaymentGateway })
+  const { data: gatewayInfo } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: getPaymentGatewayInfo })
+  const hasGateway = !!gatewayInfo?.hasActivePaymentGateway
 
   const [target, setTarget] = useState<DoctorSchedule | null>(null)
   const [patientName, setPatientName] = useState("")

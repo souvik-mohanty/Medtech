@@ -6,8 +6,10 @@ export interface FranchiseSummary {
   name: string
   /** Empty = no restriction configured, every pincode is servable. */
   serviceablePincodes: string[]
-  /** Whether the owner has an active Razorpay/PhonePe connection — never the provider/key itself, that stays owner-only. */
+  /** Whether the owner has an active Razorpay/PhonePe connection — never the secret, that stays owner-only. */
   hasActivePaymentGateway: boolean
+  /** Razorpay's Key ID, safe to embed client-side (like a Stripe publishable key) — what Checkout.js needs to open. Null unless the active gateway is Razorpay. */
+  razorpayKeyId: string | null
 }
 
 export interface FranchiseProfile {
@@ -78,16 +80,27 @@ export async function getServiceablePincodes(): Promise<string[]> {
   return franchises[0]?.serviceablePincodes ?? []
 }
 
+export interface PaymentGatewayInfo {
+  hasActivePaymentGateway: boolean
+  /** What Checkout.js needs to open — null unless the active gateway is Razorpay. */
+  razorpayKeyId: string | null
+}
+
 /**
- * Whether the lab has online payment set up — patients only ever get this
- * yes/no. Provider/key details stay owner-only behind
- * /api/franchise/payment-gateway, which a patient's token can't call at
- * all (that path requires the FRANCHISE role). Not memoized like
+ * Whether the lab has online payment set up, and the (public, safe to
+ * embed) Razorpay key to open Checkout.js with — patients only ever get
+ * this, never the secret, which stays owner-only behind
+ * /api/franchise/payment-gateway (a patient's token can't call that path
+ * at all — it requires the FRANCHISE role). Not memoized like
  * getFranchiseId, since this genuinely can change mid-session if the owner
  * connects/disconnects a gateway — left to the caller's own useQuery to
  * cache/refresh.
  */
-export async function hasActivePaymentGateway(): Promise<boolean> {
+export async function getPaymentGatewayInfo(): Promise<PaymentGatewayInfo> {
   const franchises = await getFranchises()
-  return franchises[0]?.hasActivePaymentGateway ?? false
+  const first = franchises[0]
+  return {
+    hasActivePaymentGateway: first?.hasActivePaymentGateway ?? false,
+    razorpayKeyId: first?.razorpayKeyId ?? null,
+  }
 }

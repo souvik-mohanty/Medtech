@@ -32,9 +32,9 @@ import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { getCurrentPatient, updatePatientProfile } from "@/services/api/patientsApi"
 import { validateCoupon } from "@/services/api/couponsApi"
-import { createBooking } from "@/services/api/bookingsApi"
-import { getFranchiseId } from "@/services/api/franchiseApi"
-import { hasActivePaymentGateway } from "@/services/api/franchiseApi"
+import { createBooking, verifyOnlinePayment } from "@/services/api/bookingsApi"
+import { getFranchiseId, getPaymentGatewayInfo } from "@/services/api/franchiseApi"
+import { openRazorpayCheckout, type RazorpaySuccessResponse } from "@/lib/razorpay"
 import { useBookingCartStore } from "@/app/store/bookingCartStore"
 import { AddFamilyMemberDialog } from "@/components/patient/AddFamilyMemberDialog"
 import { AddAddressDialog } from "@/components/patient/AddAddressDialog"
@@ -68,7 +68,8 @@ export function BookTestPage() {
   const queryClient = useQueryClient()
   const cart = useBookingCartStore()
   const { data: patient, isLoading: loadingPatient } = useQuery({ queryKey: ["currentPatient"], queryFn: getCurrentPatient })
-  const { data: hasGateway } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: hasActivePaymentGateway })
+  const { data: gatewayInfo } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: getPaymentGatewayInfo })
+  const hasGateway = !!gatewayInfo?.hasActivePaymentGateway
 
   const [step, setStep] = useState(0)
   const [couponInput, setCouponInput] = useState("")
@@ -79,6 +80,7 @@ export function BookTestPage() {
   const [addFamilyMemberOpen, setAddFamilyMemberOpen] = useState(false)
   const [addAddressOpen, setAddAddressOpen] = useState(false)
   const [phoneInput, setPhoneInput] = useState("")
+  const [verifyingPayment, setVerifyingPayment] = useState(false)
   const selectedMethod: PaymentMethod = hasGateway ? paymentMethod : "CASH"
 
   const savePhoneMutation = useMutation({
@@ -127,6 +129,27 @@ export function BookTestPage() {
     onError: (err: Error) => setCouponError(err.message),
   })
 
+  function finalizeBooking(booking: Booking, message: string) {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] })
+    queryClient.invalidateQueries({ queryKey: ["payments"] })
+    setConfirmedBooking(booking)
+    cart.reset()
+    setAppliedCoupon(null)
+    toast.success(message)
+  }
+
+  const verifyMutation = useMutation({
+    mutationFn: ({ bookingId, response }: { bookingId: string; response: RazorpaySuccessResponse }) =>
+      verifyOnlinePayment(bookingId, {
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      }),
+    onSuccess: (booking) => finalizeBooking(booking, "Payment received — booking confirmed!"),
+    onError: (err) => toast.error(errorMessage(err)),
+    onSettled: () => setVerifyingPayment(false),
+  })
+
   const bookingMutation = useMutation({
     mutationFn: async () =>
       createBooking({
@@ -145,16 +168,62 @@ export function BookTestPage() {
         discount: totalDiscount,
         paymentMethod: selectedMethod,
       }),
-    onSuccess: (booking) => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] })
-      queryClient.invalidateQueries({ queryKey: ["payments"] })
-      setConfirmedBooking(booking)
-      cart.reset()
-      setAppliedCoupon(null)
-      toast.success("Booking confirmed!")
+    onSuccess: async (booking) => {
+      // CASH (or, in principle, an already-paid booking) needs no checkout step.
+      if (!booking.razorpayOrderId) {
+        finalizeBooking(booking, "Booking confirmed!")
+        return
+      }
+      if (!gatewayInfo?.razorpayKeyId) {
+        toast.error("Couldn't start the payment — please try again or pay at the lab instead.")
+        return
+      }
+      try {
+        setVerifyingPayment(true)
+        await openRazorpayCheckout({
+          keyId: gatewayInfo.razorpayKeyId,
+          orderId: booking.razorpayOrderId,
+          amountPaise: Math.round(booking.totalAmount * 100),
+          labName: "LP Care Pathology",
+          description: booking.packageName ?? items.map((i) => i.testName).join(", "),
+          prefillName: patient?.fullName,
+          prefillEmail: patient?.email,
+          prefillContact: patient?.phone,
+          onSuccess: (response) => verifyMutation.mutate({ bookingId: booking.id, response }),
+          onDismiss: () => {
+            setVerifyingPayment(false)
+            // The booking already exists (PENDING) — the confirmation screen offers a "Retry
+            // payment" button rather than silently discarding it and risking a duplicate booking.
+            finalizeBooking(booking, "Booking saved — payment wasn't completed.")
+          },
+        })
+      } catch (err) {
+        setVerifyingPayment(false)
+        toast.error(errorMessage(err))
+      }
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
+
+  function retryPayment(booking: Booking) {
+    if (!booking.razorpayOrderId || !gatewayInfo?.razorpayKeyId) return
+    setVerifyingPayment(true)
+    openRazorpayCheckout({
+      keyId: gatewayInfo.razorpayKeyId,
+      orderId: booking.razorpayOrderId,
+      amountPaise: Math.round(booking.totalAmount * 100),
+      labName: "LP Care Pathology",
+      description: booking.packageName ?? booking.items.map((i) => i.testName).join(", "),
+      prefillName: patient?.fullName,
+      prefillEmail: patient?.email,
+      prefillContact: patient?.phone,
+      onSuccess: (response) => verifyMutation.mutate({ bookingId: booking.id, response }),
+      onDismiss: () => setVerifyingPayment(false),
+    }).catch((err) => {
+      setVerifyingPayment(false)
+      toast.error(errorMessage(err))
+    })
+  }
 
   useEffect(() => {
     if (patient) setPhoneInput(patient.phone)
@@ -180,8 +249,17 @@ export function BookTestPage() {
           <h2 className="mt-4 text-lg font-semibold">Booking confirmed</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Booking <span className="font-medium text-foreground">#{confirmedBooking.id}</span> is scheduled. We'll send updates as your sample moves through collection and testing.
-            {confirmedBooking.paymentStatus === "PENDING" && " Please keep the payment ready to pay the lab in cash."}
+            {confirmedBooking.paymentStatus === "PENDING" && confirmedBooking.razorpayOrderId &&
+              " Your payment wasn't completed — you can retry it below or pay at the lab instead."}
+            {confirmedBooking.paymentStatus === "PENDING" && !confirmedBooking.razorpayOrderId &&
+              " Please keep the payment ready to pay the lab in cash."}
           </p>
+          {confirmedBooking.paymentStatus === "PENDING" && confirmedBooking.razorpayOrderId && (
+            <Button className="mt-4" onClick={() => retryPayment(confirmedBooking)} disabled={verifyingPayment}>
+              {verifyingPayment && <Loader2 className="size-4 animate-spin" />}
+              Retry payment
+            </Button>
+          )}
           <div className="mt-6 flex justify-center gap-2">
             <Button variant="outline" onClick={() => navigate("/patient")}>Go to Dashboard</Button>
             <Button onClick={() => navigate("/patient/bookings")}>View My Bookings</Button>
@@ -539,8 +617,8 @@ export function BookTestPage() {
                 Next <ChevronRight className="size-4" />
               </Button>
             ) : (
-              <Button onClick={() => bookingMutation.mutate()} disabled={bookingMutation.isPending}>
-                {bookingMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              <Button onClick={() => bookingMutation.mutate()} disabled={bookingMutation.isPending || verifyingPayment}>
+                {(bookingMutation.isPending || verifyingPayment) && <Loader2 className="size-4 animate-spin" />}
                 {selectedMethod === "CASH" ? `Confirm Booking · ${formatCurrency(grandTotal)}` : `Pay ${formatCurrency(grandTotal)}`}
               </Button>
             )}

@@ -60,4 +60,6 @@ public class LabTestBookingResponse {
     private String referralName;
     private BigDecimal referralCommission;
     private List<PaymentHistoryEntryResponse> paymentHistory;
+    /** Only set for an unpaid online booking — what the frontend opens Razorpay Checkout.js against. Null once paid, or for CASH. */
+    private String razorpayOrderId;
 }

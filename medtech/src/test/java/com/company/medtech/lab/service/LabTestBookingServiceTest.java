@@ -27,13 +27,20 @@ import com.company.medtech.patient.model.PatientProfile;
 import com.company.medtech.patient.repository.PatientAddressRepository;
 import com.company.medtech.patient.repository.PatientProfileRepository;
 import com.company.medtech.payment.model.PaymentMethod;
+import com.company.medtech.payment.service.RazorpayService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -77,6 +84,11 @@ class LabTestBookingServiceTest {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    // Real Razorpay calls (HTTP to their API) have no place in a unit test — mocked so
+    // bookTest()'s online-payment path can be exercised without a real gateway account.
+    @MockBean
+    private RazorpayService razorpayService;
 
     private Franchise franchise;
     private LabTestResponse test;
@@ -185,18 +197,61 @@ class LabTestBookingServiceTest {
     }
 
     @Test
-    void onlineBookingSucceedsInstantlyWithActiveGateway() {
+    void onlineBookingCreatesARealRazorpayOrderAndStaysPendingUntilVerified() {
+        givenActiveGateway();
+        when(razorpayService.createOrder(any(), any(), anyString()))
+                .thenReturn(new RazorpayService.RazorpayOrder("order_test123", "rzp_test_key", 26250L));
+
+        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI));
+
+        // No longer mock-marked SUCCESS the instant a Razorpay Order is merely created — creating
+        // an order costs nothing and proves nothing was actually paid. It stays PENDING until
+        // verifyOnlinePayment confirms a real, signature-verified payment (see the test below).
+        assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(response.getAmountPaid()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(response.getRazorpayOrderId()).isEqualTo("order_test123");
+    }
+
+    @Test
+    void verifiedPaymentMarksTheBookingPaid() {
+        givenActiveGateway();
+        when(razorpayService.createOrder(any(), any(), anyString()))
+                .thenReturn(new RazorpayService.RazorpayOrder("order_test456", "rzp_test_key", 31500L));
+        LabTestBookingResponse booked = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI));
+
+        when(razorpayService.verifySignature(any(), eq("order_test456"), eq("pay_test456"), eq("sig_test456")))
+                .thenReturn(true);
+
+        LabTestBookingResponse verified = labTestBookingService.verifyOnlinePayment(
+                patientEmail, booked.getId(), "order_test456", "pay_test456", "sig_test456");
+
+        assertThat(verified.getPaymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
+        assertThat(verified.getAmountPaid()).isEqualByComparingTo(verified.getTotalAmount());
+    }
+
+    @Test
+    void aBadSignatureNeverMarksTheBookingPaid() {
+        givenActiveGateway();
+        when(razorpayService.createOrder(any(), any(), anyString()))
+                .thenReturn(new RazorpayService.RazorpayOrder("order_test789", "rzp_test_key", 31500L));
+        LabTestBookingResponse booked = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI));
+
+        when(razorpayService.verifySignature(any(), any(), any(), any())).thenReturn(false);
+
+        assertThatThrownBy(() -> labTestBookingService.verifyOnlinePayment(
+                patientEmail, booked.getId(), "order_test789", "pay_test789", "forged-signature"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("verification failed");
+    }
+
+    private void givenActiveGateway() {
         PaymentGatewayConfig config = new PaymentGatewayConfig();
         config.setProvider(PaymentProvider.RAZORPAY);
-        config.setApiKey("rzp_live_abc123");
+        config.setApiKey("rzp_test_key");
         config.setEncryptedApiSecret("encrypted-blob");
         config.setActive(true);
         franchise.setPaymentGateway(config);
         franchiseRepository.save(franchise);
-
-        LabTestBookingResponse response = labTestBookingService.bookTest(patientEmail, bookingRequest(List.of(test.getId()), null, PaymentMethod.UPI));
-
-        assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.SUCCESS);
     }
 
     @Test

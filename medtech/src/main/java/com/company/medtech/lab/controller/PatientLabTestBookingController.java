@@ -3,6 +3,7 @@ package com.company.medtech.lab.controller;
 import com.company.medtech.common.response.ApiResponse;
 import com.company.medtech.lab.dto.LabTestBookingRequest;
 import com.company.medtech.lab.dto.LabTestBookingResponse;
+import com.company.medtech.lab.dto.VerifyPaymentRequest;
 import com.company.medtech.lab.model.LabReport;
 import com.company.medtech.lab.service.LabReportService;
 import com.company.medtech.lab.service.LabTestBookingService;
@@ -44,6 +45,20 @@ public class PatientLabTestBookingController {
     @GetMapping("/{bookingId}")
     public ApiResponse<LabTestBookingResponse> get(Authentication authentication, @PathVariable String bookingId) {
         return ApiResponse.success("OK", labTestBookingService.getForPatient(authentication.getName(), bookingId));
+    }
+
+    @PostMapping(value = "/{bookingId}/verify-payment", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<LabTestBookingResponse> verifyPayment(
+            Authentication authentication,
+            @PathVariable String bookingId,
+            @Valid @RequestBody VerifyPaymentRequest request
+    ) {
+        return ApiResponse.success(
+                "Payment verified",
+                labTestBookingService.verifyOnlinePayment(
+                        authentication.getName(), bookingId,
+                        request.getRazorpayOrderId(), request.getRazorpayPaymentId(), request.getRazorpaySignature())
+        );
     }
 
     @GetMapping("/{bookingId}/report")

@@ -28,8 +28,10 @@ public class FranchiseResponse {
     private List<String> serviceablePincodes;
     /**
      * Just the yes/no a patient needs to know whether online payment is an
-     * option — never the provider/key/secret, those stay owner-only behind
+     * option — never the secret, that stays owner-only behind
      * /api/franchise/payment-gateway. See Franchise#hasActivePaymentGateway.
      */
     private boolean hasActivePaymentGateway;
+    /** Razorpay's Key ID — like Stripe's publishable key, meant to be embedded in the client to open Checkout.js. Never the Key Secret. Null unless the active gateway is Razorpay. */
+    private String razorpayKeyId;
 }

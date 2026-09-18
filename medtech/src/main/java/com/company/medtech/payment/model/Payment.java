@@ -67,6 +67,13 @@ public class Payment {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
+    /** Set when this is a real Razorpay payment — null for CASH. Order id exists from the moment Checkout.js opens; payment id only once Razorpay reports one back for verification. */
+    @Column(name = "razorpay_order_id")
+    private String razorpayOrderId;
+
+    @Column(name = "razorpay_payment_id")
+    private String razorpayPaymentId;
+
     public UUID getId() {
         return id;
     }
@@ -161,5 +168,21 @@ public class Payment {
 
     public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
+    }
+
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
+
+    public String getRazorpayPaymentId() {
+        return razorpayPaymentId;
+    }
+
+    public void setRazorpayPaymentId(String razorpayPaymentId) {
+        this.razorpayPaymentId = razorpayPaymentId;
     }
 }
