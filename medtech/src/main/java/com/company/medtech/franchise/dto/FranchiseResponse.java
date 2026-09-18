@@ -26,4 +26,10 @@ public class FranchiseResponse {
     private BigDecimal freeCollectionMinOrder;
     /** Empty = no restriction configured, every pincode is servable. */
     private List<String> serviceablePincodes;
+    /**
+     * Just the yes/no a patient needs to know whether online payment is an
+     * option — never the provider/key/secret, those stay owner-only behind
+     * /api/franchise/payment-gateway. See Franchise#hasActivePaymentGateway.
+     */
+    private boolean hasActivePaymentGateway;
 }

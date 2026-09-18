@@ -110,7 +110,8 @@ public class FranchiseService {
                 franchise.getInvoicePrefix(),
                 franchise.getCollectionCharge(),
                 franchise.getFreeCollectionMinOrder(),
-                franchise.getServiceablePincodes().stream().sorted().toList()
+                franchise.getServiceablePincodes().stream().sorted().toList(),
+                franchise.hasActivePaymentGateway()
         );
     }
 

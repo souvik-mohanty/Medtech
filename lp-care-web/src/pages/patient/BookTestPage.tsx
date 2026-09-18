@@ -34,7 +34,7 @@ import { getCurrentPatient, updatePatientProfile } from "@/services/api/patients
 import { validateCoupon } from "@/services/api/couponsApi"
 import { createBooking } from "@/services/api/bookingsApi"
 import { getFranchiseId } from "@/services/api/franchiseApi"
-import { getPaymentGatewayConfig } from "@/services/api/paymentGatewayApi"
+import { hasActivePaymentGateway } from "@/services/api/franchiseApi"
 import { useBookingCartStore } from "@/app/store/bookingCartStore"
 import { AddFamilyMemberDialog } from "@/components/patient/AddFamilyMemberDialog"
 import { AddAddressDialog } from "@/components/patient/AddAddressDialog"
@@ -68,8 +68,7 @@ export function BookTestPage() {
   const queryClient = useQueryClient()
   const cart = useBookingCartStore()
   const { data: patient, isLoading: loadingPatient } = useQuery({ queryKey: ["currentPatient"], queryFn: getCurrentPatient })
-  const { data: gatewayConfig } = useQuery({ queryKey: ["payment-gateway"], queryFn: getPaymentGatewayConfig })
-  const hasGateway = !!gatewayConfig?.active
+  const { data: hasGateway } = useQuery({ queryKey: ["franchise-payment-gateway"], queryFn: hasActivePaymentGateway })
 
   const [step, setStep] = useState(0)
   const [couponInput, setCouponInput] = useState("")

@@ -6,6 +6,8 @@ export interface FranchiseSummary {
   name: string
   /** Empty = no restriction configured, every pincode is servable. */
   serviceablePincodes: string[]
+  /** Whether the owner has an active Razorpay/PhonePe connection — never the provider/key itself, that stays owner-only. */
+  hasActivePaymentGateway: boolean
 }
 
 export interface FranchiseProfile {
@@ -74,4 +76,18 @@ export function getFranchiseId(): Promise<string> {
 export async function getServiceablePincodes(): Promise<string[]> {
   const franchises = await getFranchises()
   return franchises[0]?.serviceablePincodes ?? []
+}
+
+/**
+ * Whether the lab has online payment set up — patients only ever get this
+ * yes/no. Provider/key details stay owner-only behind
+ * /api/franchise/payment-gateway, which a patient's token can't call at
+ * all (that path requires the FRANCHISE role). Not memoized like
+ * getFranchiseId, since this genuinely can change mid-session if the owner
+ * connects/disconnects a gateway — left to the caller's own useQuery to
+ * cache/refresh.
+ */
+export async function hasActivePaymentGateway(): Promise<boolean> {
+  const franchises = await getFranchises()
+  return franchises[0]?.hasActivePaymentGateway ?? false
 }
